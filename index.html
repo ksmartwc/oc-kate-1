@@ -18,7 +18,7 @@ const ctx    = canvas.getContext('2d');
 const W = canvas.width, H = canvas.height;
 
 // ── Isometric grid ─────────────────────────────────────
-const N = 8, C = 22;
+const N = 8, C = 27;
 const R = [ Math.sqrt(3)/2*C,  C/2 ];
 const L = [-Math.sqrt(3)/2*C,  C/2 ];
 
@@ -60,7 +60,7 @@ for(let i=0;i<N;i++) for(let k=0;k<N;k++){ const[sx,sy]=leftFaceDot(i,k);  addDo
 allDots.sort((a,b)=>a.depth-b.depth);
 
 // ── Dot sizing ────────────────────────────────────────
-const R_MAX=22, R_MIN=2.5;
+const R_MAX=15, R_MIN=3;
 const SIGMA=(N-1)*Math.sqrt(3)/2*C*0.42;
 
 function dotRadius(sx,sy,cx,cy){
@@ -68,7 +68,8 @@ function dotRadius(sx,sy,cx,cy){
   return R_MIN+(R_MAX-R_MIN)*Math.exp(-(d*d)/(2*SIGMA*SIGMA));
 }
 
-const BRIGHT={top:1.0, left:0.68, right:0.52};
+// Stronger face shading for 3D depth
+const BRIGHT={top:1.0, left:0.60, right:0.38};
 
 function drawDot(sx,sy,r,face){
   if(r<0.5)return;
@@ -86,7 +87,6 @@ function drawDot(sx,sy,r,face){
   h.addColorStop(0,  `rgba(255,255,255,${b*.72})`);
   h.addColorStop(.4, `rgba(255,255,255,${b*.1})`);
   h.addColorStop(1,  'rgba(255,255,255,0)');
-  ctx.shadowBlur = 0;
   ctx.beginPath();ctx.arc(sx,sy,r,0,Math.PI*2);ctx.fillStyle=h;ctx.fill();
 }
 
@@ -106,34 +106,23 @@ const cubeCenterX = originX;
 const cubeCenterY = originY + (N-1)*C;  // 3-face meeting point
 
 function drawBackground(){
+  // Deep background
   ctx.fillStyle = '#060d28';
   ctx.fillRect(0,0,W,H);
 
-  // Soft light source behind the cube — makes it look floating
-  const light = ctx.createRadialGradient(cubeCenterX, cubeCenterY - cubeH*0.1, 0,
-                                          cubeCenterX, cubeCenterY - cubeH*0.1, cubeH * 0.95);
-  light.addColorStop(0,    'rgba(18, 50, 130, 0.9)');
-  light.addColorStop(0.35, 'rgba(10, 28,  85, 0.65)');
-  light.addColorStop(0.7,  'rgba(5,  14,  55, 0.3)');
-  light.addColorStop(1,    'rgba(0,   0,   0, 0)');
-  ctx.fillStyle = light;
+  // Soft depth glow behind cube — like a light source
+  const bg = ctx.createRadialGradient(cubeCenterX, cubeCenterY, 0, cubeCenterX, cubeCenterY, cubeH*0.72);
+  bg.addColorStop(0,   'rgba(12, 30, 80, 0.85)');
+  bg.addColorStop(0.45,'rgba(8, 20, 58, 0.6)');
+  bg.addColorStop(1,   'rgba(0, 0, 0, 0)');
+  ctx.fillStyle = bg;
   ctx.fillRect(0,0,W,H);
 
-  // Secondary warm edge-glow for depth (top-left)
-  const edge = ctx.createRadialGradient(cubeCenterX - cubeH*0.3, cubeCenterY - cubeH*0.5, 0,
-                                         cubeCenterX - cubeH*0.3, cubeCenterY - cubeH*0.5, cubeH * 0.8);
-  edge.addColorStop(0,   'rgba(20, 60, 160, 0.35)');
-  edge.addColorStop(1,   'rgba(0, 0, 0, 0)');
-  ctx.fillStyle = edge;
-  ctx.fillRect(0,0,W,H);
-
-  // Floating shadow beneath the cube (like it casts a shadow on the floor below)
-  const shadowY = cubeCenterY + cubeH * 0.58;
-  const floatShadow = ctx.createRadialGradient(cubeCenterX, shadowY, 0, cubeCenterX, shadowY, cubeH * 0.38);
-  floatShadow.addColorStop(0,   'rgba(0, 0, 0, 0.5)');
-  floatShadow.addColorStop(0.5, 'rgba(0, 0, 0, 0.2)');
-  floatShadow.addColorStop(1,   'rgba(0, 0, 0, 0)');
-  ctx.fillStyle = floatShadow;
+  // Subtle shadow/depth plane below cube
+  const shadow = ctx.createRadialGradient(cubeCenterX, cubeCenterY+80, 0, cubeCenterX, cubeCenterY+80, 300);
+  shadow.addColorStop(0,   'rgba(0,0,0,0.35)');
+  shadow.addColorStop(1,   'rgba(0,0,0,0)');
+  ctx.fillStyle = shadow;
   ctx.fillRect(0,0,W,H);
 }
 
