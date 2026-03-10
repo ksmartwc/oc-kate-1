@@ -17,40 +17,33 @@ const canvas = document.getElementById('c');
 const ctx    = canvas.getContext('2d');
 const W = canvas.width, H = canvas.height;
 
-// ── Isometric grid ───────────────────────────────────────────
+// ── Isometric grid ─────────────────────────────────────
 const N = 8, C = 46;
 const R = [ Math.sqrt(3)/2*C,  C/2 ];
 const L = [-Math.sqrt(3)/2*C,  C/2 ];
 
-const cubeH   = (N-1)*C*1.5;
-const originY = H/2 - cubeH/2;
+// Full cube height = 2*(N-1)*C  (top apex → front-bottom corner)
+const cubeH   = 2*(N-1)*C;
+const originY = H/2 - cubeH/2;   // top-back corner Y
 const originX = W/2;
 
 const origin      = [originX, originY];
 const rightOrigin = [originX+(N-1)*R[0], originY+(N-1)*R[1]];
 const leftOrigin  = [originX+(N-1)*L[0], originY+(N-1)*L[1]];
 
-// ── All 6 key corner points ───────────────────────────────────
-const CENTER       = [originX,              originY + (N-1)*C];   // front center (home)
-const TOP          = [originX,              originY];              // top apex
-const TOP_LEFT     = [leftOrigin[0],        leftOrigin[1]];        // top-left corner
-const TOP_RIGHT    = [rightOrigin[0],       rightOrigin[1]];       // top-right corner
-const BOT_LEFT     = [leftOrigin[0],        leftOrigin[1]+(N-1)*C];
-const BOT_RIGHT    = [rightOrigin[0],       rightOrigin[1]+(N-1)*C];
+// ── 6 perimeter corners (clockwise from top) ───────────
+const TOP       = [originX,              originY];
+const TOP_RIGHT = [rightOrigin[0],       rightOrigin[1]];
+const BOT_RIGHT = [rightOrigin[0],       rightOrigin[1]+(N-1)*C];
+const BOT_FRONT = [originX,              originY + 2*(N-1)*C];   // bottom tip
+const BOT_LEFT  = [leftOrigin[0],        leftOrigin[1]+(N-1)*C];
+const TOP_LEFT  = [leftOrigin[0],        leftOrigin[1]];
 
-// Sequence: center → corner → center → next corner → ...
-const CORNERS = [TOP, TOP_LEFT, BOT_LEFT, BOT_RIGHT, TOP_RIGHT];
+// Orbit path — closed loop, CW
+const PATH = [TOP, TOP_RIGHT, BOT_RIGHT, BOT_FRONT, BOT_LEFT, TOP_LEFT];
+const CYCLE_MS = 6000; // full orbit duration
 
-// Full path: [center, corner1, center, corner2, center, ...]
-const PATH = [];
-for(const c of CORNERS){ PATH.push(CENTER); PATH.push(c); }
-PATH.push(CENTER); // close loop
-
-const SEG_MS  = 800;   // ms per segment (out or back)
-const PAUSE_MS= 250;   // brief pause at corner
-const CYCLE   = (SEG_MS*2 + PAUSE_MS) * CORNERS.length;
-
-// ── Geometry ─────────────────────────────────────────────────
+// ── Build all dots ────────────────────────────────────
 function topFaceDot(i,j)   { return [origin[0]+i*R[0]+j*L[0],     origin[1]+i*R[1]+j*L[1]]; }
 function rightFaceDot(j,k) { return [rightOrigin[0]+j*L[0],        rightOrigin[1]+j*L[1]+k*C]; }
 function leftFaceDot(i,k)  { return [leftOrigin[0]+i*R[0],         leftOrigin[1]+i*R[1]+k*C]; }
@@ -66,10 +59,9 @@ for(let j=0;j<N;j++) for(let k=0;k<N;k++){ const[sx,sy]=rightFaceDot(j,k); addDo
 for(let i=0;i<N;i++) for(let k=0;k<N;k++){ const[sx,sy]=leftFaceDot(i,k);  addDot(sx,sy,'left',(N-1-i)+k+(N-1)); }
 allDots.sort((a,b)=>a.depth-b.depth);
 
-// ── Size / draw ───────────────────────────────────────────────
+// ── Dot size: Gaussian from moving center ────────────
 const R_MAX=26, R_MIN=4;
-const MAX_D=(N-1)*Math.sqrt(3)/2*C*1.2;
-const SIGMA=MAX_D*0.42;
+const SIGMA=(N-1)*Math.sqrt(3)/2*C*0.42;
 
 function dotRadius(sx,sy,cx,cy){
   const d=Math.hypot(sx-cx,sy-cy);
@@ -98,33 +90,22 @@ function drawDot(sx,sy,r,face){
   ctx.beginPath();ctx.arc(sx,sy,r,0,Math.PI*2);ctx.fillStyle=h;ctx.fill();
 }
 
-// ── Animation: center → corner → center (with pause at corner) ─
+// ── Smooth step ───────────────────────────────────────
 function smoothstep(t){ return t*t*(3-2*t); }
 
 function getCenter(elapsed){
-  const segTotal = SEG_MS*2 + PAUSE_MS;
-  const ci = Math.floor(elapsed / segTotal) % CORNERS.length;
-  const within = elapsed % segTotal;
-  const corner = CORNERS[ci];
-
-  if(within < SEG_MS){
-    // Going out: center → corner
-    const t = smoothstep(within / SEG_MS);
-    return [CENTER[0]+(corner[0]-CENTER[0])*t, CENTER[1]+(corner[1]-CENTER[1])*t];
-  } else if(within < SEG_MS + PAUSE_MS){
-    // Pause at corner
-    return corner;
-  } else {
-    // Coming back: corner → center
-    const t = smoothstep((within - SEG_MS - PAUSE_MS) / SEG_MS);
-    return [corner[0]+(CENTER[0]-corner[0])*t, corner[1]+(CENTER[1]-corner[1])*t];
-  }
+  const segs = PATH.length;
+  const pos  = (elapsed / CYCLE_MS) * segs;
+  const seg  = Math.floor(pos) % segs;
+  const t    = smoothstep(pos - Math.floor(pos));
+  const a = PATH[seg], b = PATH[(seg+1) % segs];
+  return [a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t];
 }
 
-let start=null;
+let start = null;
 function render(ts){
-  if(!start) start=ts;
-  const[cx,cy]=getCenter((ts-start)%CYCLE);
+  if(!start) start = ts;
+  const [cx,cy] = getCenter((ts-start) % CYCLE_MS);
   ctx.clearRect(0,0,W,H);
   for(const d of allDots) drawDot(d.sx,d.sy,dotRadius(d.sx,d.sy,cx,cy),d.face);
   requestAnimationFrame(render);
