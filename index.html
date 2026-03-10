@@ -78,10 +78,11 @@ const light = norm([-0.35, -0.75, 0.65]);
 
 function render(){
   ctx.clearRect(0, 0, W, H);
-  angleY += 0.008;
-  angleX += 0.002;
+  angleY += 0.018;
+  angleX += 0.006;
   floatT += 0.018;
-  const fy = Math.sin(floatT * 0.6) * 15;
+cubeFloatY = Math.sin(floatT * 0.6) * 18;
+  const fy = 0; // float whole cube instead
 
   const visible = new Map();
 
@@ -95,7 +96,7 @@ function render(){
 
     const scale = FOV / (FOV + p[2] + 400);
     const sx = cx + p[0] * scale;
-    const sy = cy + p[1] * scale;
+    const sy = cy + cubeFloatY + p[1] * scale;
 
     // Uniform dot size — just slight perspective scale for depth realism
     const r = DOT_R * scale;
