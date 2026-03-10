@@ -122,7 +122,7 @@ const cubeCenterY = originY + (N-1)*C;  // 3-face meeting point
 // Floor Y: where shadows land (below cube bottom)
 const floorY = originY + 2*(N-1)*C + C * 2.0;
 
-function drawBackground(){
+function drawBackground(cx, cy){
   ctx.fillStyle = '#060d28';
   ctx.fillRect(0,0,W,H);
 
@@ -141,6 +141,16 @@ function drawBackground(){
   ctx.fillStyle = glow;
   ctx.fillRect(-W, -H*2, W*2, H*4);
   ctx.restore();
+
+  // Moving glow following the cluster
+  if(cx !== undefined){
+    const mg = ctx.createRadialGradient(cx, cy, 0, cx, cy, cubeH * 0.55);
+    mg.addColorStop(0,   'rgba(90, 30, 160, 0.30)');  // purple glow at center
+    mg.addColorStop(0.4, 'rgba(50, 20, 120, 0.18)');
+    mg.addColorStop(1,   'rgba(0,   0,   0,  0)');
+    ctx.fillStyle = mg;
+    ctx.fillRect(0, 0, W, H);
+  }
 }
 
 function drawFloorShadows(cx, cy){
@@ -176,7 +186,7 @@ function render(ts){
   const [cx,cy] = (mouseX !== null)
     ? [mouseX, mouseY]
     : getCenter((ts-start) % CYCLE_MS);
-  drawBackground();
+  drawBackground(cx, cy);
   for(const d of allDots){
     const glow = glowFactor(d.sx,d.sy,cx,cy);
     const r = DOT_R + 10.7 * glow; // size boost (3.5→14.2px, +10% on big dots)
