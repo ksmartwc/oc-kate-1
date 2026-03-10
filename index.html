@@ -105,25 +105,52 @@ function getCenter(elapsed){
 const cubeCenterX = originX;
 const cubeCenterY = originY + (N-1)*C;  // 3-face meeting point
 
+// Floor Y: where shadows land (below cube bottom)
+const floorY = originY + 2*(N-1)*C + C * 2.0;
+
 function drawBackground(){
-  // Deep background
   ctx.fillStyle = '#060d28';
   ctx.fillRect(0,0,W,H);
 
-  // Soft depth glow behind cube — like a light source
-  const bg = ctx.createRadialGradient(cubeCenterX, cubeCenterY, 0, cubeCenterX, cubeCenterY, cubeH*0.72);
-  bg.addColorStop(0,   'rgba(12, 30, 80, 0.85)');
-  bg.addColorStop(0.45,'rgba(8, 20, 58, 0.6)');
-  bg.addColorStop(1,   'rgba(0, 0, 0, 0)');
-  ctx.fillStyle = bg;
-  ctx.fillRect(0,0,W,H);
+  // Soft ambient light 1 — upper-left behind cube
+  const l1 = ctx.createRadialGradient(cubeCenterX - C*2, cubeCenterY - C*2, 0,
+                                       cubeCenterX - C*2, cubeCenterY - C*2, cubeH*0.9);
+  l1.addColorStop(0,   'rgba(22, 55, 140, 0.55)');
+  l1.addColorStop(0.5, 'rgba(10, 25, 80, 0.25)');
+  l1.addColorStop(1,   'rgba(0, 0, 0, 0)');
+  ctx.fillStyle = l1; ctx.fillRect(0,0,W,H);
 
-  // Subtle shadow/depth plane below cube
-  const shadow = ctx.createRadialGradient(cubeCenterX, cubeCenterY+80, 0, cubeCenterX, cubeCenterY+80, 300);
-  shadow.addColorStop(0,   'rgba(0,0,0,0.35)');
-  shadow.addColorStop(1,   'rgba(0,0,0,0)');
-  ctx.fillStyle = shadow;
-  ctx.fillRect(0,0,W,H);
+  // Soft ambient light 2 — right side, slightly warmer
+  const l2 = ctx.createRadialGradient(cubeCenterX + C*3, cubeCenterY, 0,
+                                       cubeCenterX + C*3, cubeCenterY, cubeH*0.65);
+  l2.addColorStop(0,   'rgba(14, 38, 110, 0.4)');
+  l2.addColorStop(1,   'rgba(0, 0, 0, 0)');
+  ctx.fillStyle = l2; ctx.fillRect(0,0,W,H);
+
+  // Soft ambient light 3 — floor area lit from below-center
+  const l3 = ctx.createRadialGradient(cubeCenterX, floorY - C, 0,
+                                       cubeCenterX, floorY - C, cubeH*0.55);
+  l3.addColorStop(0,   'rgba(10, 28, 88, 0.45)');
+  l3.addColorStop(1,   'rgba(0, 0, 0, 0)');
+  ctx.fillStyle = l3; ctx.fillRect(0,0,W,H);
+}
+
+function drawFloorShadows(cx, cy){
+  for(const d of allDots){
+    const r = dotRadius(d.sx, d.sy, cx, cy);
+    const distToFloor = floorY - d.sy;
+    const spreadT = Math.min(1, distToFloor / (cubeH * 1.2));
+    const shadowRx = r * (0.8 + spreadT * 1.0);
+    const shadowRy = shadowRx * 0.28;
+    const alpha    = 0.22 * (r / R_MAX) * (0.4 + (1 - spreadT) * 0.6);
+    if(alpha < 0.01) continue;
+    // Slight outward x spread based on distance from center
+    const spreadX = (d.sx - cubeCenterX) * 0.06;
+    ctx.beginPath();
+    ctx.ellipse(d.sx + spreadX, floorY, shadowRx, shadowRy, 0, 0, Math.PI*2);
+    ctx.fillStyle = `rgba(0,0,0,${alpha})`;
+    ctx.fill();
+  }
 }
 
 let start = null;
@@ -131,6 +158,7 @@ function render(ts){
   if(!start) start = ts;
   const [cx,cy] = getCenter((ts-start) % CYCLE_MS);
   drawBackground();
+  drawFloorShadows(cx, cy);
   for(const d of allDots) drawDot(d.sx,d.sy,dotRadius(d.sx,d.sy,cx,cy),d.face);
   requestAnimationFrame(render);
 }
