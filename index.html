@@ -60,7 +60,7 @@ for(let i=0;i<N;i++) for(let k=0;k<N;k++){ const[sx,sy]=leftFaceDot(i,k);  addDo
 allDots.sort((a,b)=>a.depth-b.depth);
 
 // ── Dot sizing ────────────────────────────────────────
-const R_MAX=12, R_MIN=2.5;
+const R_MAX=17, R_MIN=2.5;
 const SIGMA=(N-1)*Math.sqrt(3)/2*C*0.42;
 
 function dotRadius(sx,sy,cx,cy){
@@ -106,23 +106,69 @@ const cubeCenterX = originX;
 const cubeCenterY = originY + (N-1)*C;  // 3-face meeting point
 
 function drawBackground(){
-  // Deep background
+  // ── Base background ──────────────────────────────
   ctx.fillStyle = '#060d28';
   ctx.fillRect(0,0,W,H);
 
-  // Soft depth glow behind cube — like a light source
-  const bg = ctx.createRadialGradient(cubeCenterX, cubeCenterY, 0, cubeCenterX, cubeCenterY, cubeH*0.72);
-  bg.addColorStop(0,   'rgba(12, 30, 80, 0.85)');
-  bg.addColorStop(0.45,'rgba(8, 20, 58, 0.6)');
+  // Ambient env gradient: horizon light from center-bottom
+  const env = ctx.createRadialGradient(W/2, H*0.78, 0, W/2, H*0.78, H*0.85);
+  env.addColorStop(0,   'rgba(8, 25, 75, 0.9)');
+  env.addColorStop(0.5, 'rgba(5, 14, 50, 0.6)');
+  env.addColorStop(1,   'rgba(0, 0, 0, 0)');
+  ctx.fillStyle = env;
+  ctx.fillRect(0,0,W,H);
+
+  // ── Perspective grid floor ────────────────────────
+  const horizon = H * 0.62;   // horizon line Y
+  const vp = [W/2, horizon];  // vanishing point
+
+  ctx.save();
+  // Clip to below-horizon area for floor grid
+  ctx.beginPath();
+  ctx.rect(0, horizon, W, H - horizon);
+  ctx.clip();
+
+  const GRID_LINES = 10;
+  const GRID_SPREAD = W * 1.4;
+  ctx.strokeStyle = 'rgba(30, 70, 180, 0.18)';
+  ctx.lineWidth = 0.8;
+
+  // Radial lines from vanishing point
+  for(let i = 0; i <= GRID_LINES; i++){
+    const x = W/2 - GRID_SPREAD/2 + (GRID_SPREAD / GRID_LINES) * i;
+    ctx.beginPath();
+    ctx.moveTo(vp[0], vp[1]);
+    ctx.lineTo(x, H);
+    ctx.stroke();
+  }
+
+  // Horizontal lines (closer = more spaced)
+  for(let d = 1; d <= 7; d++){
+    const t = d / 7;
+    const y = horizon + (H - horizon) * (t * t);   // perspective spacing
+    const alpha = 0.06 + t * 0.12;
+    ctx.strokeStyle = `rgba(30, 70, 180, ${alpha})`;
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(W, y);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  // ── Depth glow behind cube ────────────────────────
+  const bg = ctx.createRadialGradient(cubeCenterX, cubeCenterY-20, 0, cubeCenterX, cubeCenterY-20, cubeH*0.8);
+  bg.addColorStop(0,   'rgba(15, 40, 100, 0.7)');
+  bg.addColorStop(0.5, 'rgba(8, 20, 60, 0.4)');
   bg.addColorStop(1,   'rgba(0, 0, 0, 0)');
   ctx.fillStyle = bg;
   ctx.fillRect(0,0,W,H);
 
-  // Subtle shadow/depth plane below cube
-  const shadow = ctx.createRadialGradient(cubeCenterX, cubeCenterY+80, 0, cubeCenterX, cubeCenterY+80, 300);
-  shadow.addColorStop(0,   'rgba(0,0,0,0.35)');
-  shadow.addColorStop(1,   'rgba(0,0,0,0)');
-  ctx.fillStyle = shadow;
+  // Soft shadow/reflection under cube on floor
+  const reflY = cubeCenterY + cubeH * 0.5;
+  const refl = ctx.createRadialGradient(cubeCenterX, reflY, 0, cubeCenterX, reflY, cubeH*0.35);
+  refl.addColorStop(0,   'rgba(10, 30, 120, 0.28)');
+  refl.addColorStop(1,   'rgba(0, 0, 0, 0)');
+  ctx.fillStyle = refl;
   ctx.fillRect(0,0,W,H);
 }
 
