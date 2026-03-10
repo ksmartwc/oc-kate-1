@@ -72,8 +72,7 @@ function glowFactor(sx,sy,cx,cy){
 // Face shading for 3D depth
 const BRIGHT={top:1.0, left:0.60, right:0.38};
 
-function drawDot(sx,sy,face,glow){
-  const r=DOT_R;
+function drawDot(sx,sy,r,face,glow){
   const b=BRIGHT[face];
   const warmT=glow; // 0=base blue, 1=bright highlight
   const fr=Math.round(55+warmT*65), fg=Math.round(120+warmT*80), fb=255;
@@ -152,7 +151,11 @@ function render(ts){
   if(!start) start = ts;
   const [cx,cy] = getCenter((ts-start) % CYCLE_MS);
   drawBackground();
-  for(const d of allDots) drawDot(d.sx,d.sy,d.face,glowFactor(d.sx,d.sy,cx,cy));
+  for(const d of allDots){
+    const glow = glowFactor(d.sx,d.sy,cx,cy);
+    const r = DOT_R + 4.5 * glow; // subtle size boost (3.5→8px), no huge bubbles
+    drawDot(d.sx,d.sy,r,d.face,glow);
+  }
   requestAnimationFrame(render);
 }
 requestAnimationFrame(render);
