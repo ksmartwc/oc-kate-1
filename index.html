@@ -126,21 +126,6 @@ function drawBackground(cx, cy){
   ctx.fillStyle = '#060d28';
   ctx.fillRect(0,0,W,H);
 
-  // Horizontal ellipse gradient (uniform, lighter, no dark center)
-  const glowY  = cubeCenterY + cubeH * 0.4;   // moved up 10%
-  const rBase  = cubeH * 0.525;               // 30% smaller (was 0.75)
-  ctx.save();
-  ctx.translate(cubeCenterX, glowY);
-  ctx.scale(2.8, 1.0);   // wide horizontal ellipse
-  const glow = ctx.createRadialGradient(0, 0, 0, 0, 0, rBase);
-  glow.addColorStop(0,    'rgba(25, 60, 160, 0.55)');  // lighter uniform center
-  glow.addColorStop(0.4,  'rgba(20, 50, 140, 0.45)');
-  glow.addColorStop(0.7,  'rgba(12, 30,  95, 0.25)');
-  glow.addColorStop(0.9,  'rgba(6,  15,  55, 0.10)');
-  glow.addColorStop(1,    'rgba(0,   0,   0, 0)');
-  ctx.fillStyle = glow;
-  ctx.fillRect(-W, -H*2, W*2, H*4);
-  ctx.restore();
 
   // Moving glow following the cluster
   if(cx !== undefined){
