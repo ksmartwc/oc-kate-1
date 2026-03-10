@@ -112,27 +112,15 @@ function drawBackground(){
   ctx.fillStyle = '#060d28';
   ctx.fillRect(0,0,W,H);
 
-  // Soft ambient light 1 — upper-left behind cube
-  const l1 = ctx.createRadialGradient(cubeCenterX - C*2, cubeCenterY - C*2, 0,
-                                       cubeCenterX - C*2, cubeCenterY - C*2, cubeH*0.9);
-  l1.addColorStop(0,   'rgba(35, 80, 200, 0.85)');
-  l1.addColorStop(0.5, 'rgba(18, 45, 130, 0.5)');
-  l1.addColorStop(1,   'rgba(0, 0, 0, 0)');
-  ctx.fillStyle = l1; ctx.fillRect(0,0,W,H);
-
-  // Soft ambient light 2 — right side, slightly warmer
-  const l2 = ctx.createRadialGradient(cubeCenterX + C*3, cubeCenterY, 0,
-                                       cubeCenterX + C*3, cubeCenterY, cubeH*0.65);
-  l2.addColorStop(0,   'rgba(25, 60, 170, 0.65)');
-  l2.addColorStop(1,   'rgba(0, 0, 0, 0)');
-  ctx.fillStyle = l2; ctx.fillRect(0,0,W,H);
-
-  // Soft ambient light 3 — floor area lit from below-center
-  const l3 = ctx.createRadialGradient(cubeCenterX, floorY - C, 0,
-                                       cubeCenterX, floorY - C, cubeH*0.55);
-  l3.addColorStop(0,   'rgba(18, 50, 140, 0.7)');
-  l3.addColorStop(1,   'rgba(0, 0, 0, 0)');
-  ctx.fillStyle = l3; ctx.fillRect(0,0,W,H);
+  // Single circular gradient light behind the cube
+  const r = cubeH * 0.85;
+  const glow = ctx.createRadialGradient(cubeCenterX, cubeCenterY, 0, cubeCenterX, cubeCenterY, r);
+  glow.addColorStop(0,    'rgba(30, 70, 185, 0.85)');
+  glow.addColorStop(0.45, 'rgba(15, 38, 120, 0.5)');
+  glow.addColorStop(0.75, 'rgba(7,  18,  70, 0.2)');
+  glow.addColorStop(1,    'rgba(0,   0,   0, 0)');
+  ctx.fillStyle = glow;
+  ctx.fillRect(0,0,W,H);
 }
 
 function drawFloorShadows(cx, cy){
