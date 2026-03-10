@@ -73,7 +73,9 @@ function glowFactor(sx,sy,cx,cy){
 const BRIGHT={top:1.0, left:0.60, right:0.38};
 
 function drawDot(sx,sy,r,face,glow){
-  const b = BRIGHT[face] * (0.64 + 0.36 * glow); // small dots darker
+  // Small dots keep face shading; cluster dots all same brightness (uniform=0.9)
+  const effB = BRIGHT[face] * (1 - glow) + 0.90 * glow;
+  const b = effB * (0.64 + 0.36 * glow);
   const w = glow; // 0=small/blue  1=big/green-center
 
   // Small dots (glow=0): pure blue
