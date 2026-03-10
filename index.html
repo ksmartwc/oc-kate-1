@@ -114,7 +114,8 @@ function drawBackground(){
 
   // Single circular gradient light behind the cube
   const r = cubeH * 0.85;
-  const glow = ctx.createRadialGradient(cubeCenterX, cubeCenterY, 0, cubeCenterX, cubeCenterY, r);
+  const glowY = cubeCenterY + cubeH * 0.4;
+  const glow = ctx.createRadialGradient(cubeCenterX, glowY, 0, cubeCenterX, glowY, r);
   glow.addColorStop(0,    'rgba(30, 70, 185, 0.85)');
   glow.addColorStop(0.45, 'rgba(15, 38, 120, 0.5)');
   glow.addColorStop(0.75, 'rgba(7,  18,  70, 0.2)');
