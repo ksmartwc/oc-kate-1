@@ -77,20 +77,19 @@ function drawDot(sx,sy,r,face,glow){
   const w = glow; // 0=small/blue  1=big/green-center
 
   // Small dots (glow=0): pure blue
-  // Big dots (glow=1): white highlight, green-blue transition
-  // Center: blue(55,120,255) → white(255,255,255)
-  const cR0 = Math.round(55  + w * (255 - 55));
+  // Big dots (glow=1): white center highlight, purple mid ring, blue outer
+  const cR0 = Math.round(55  + w * (255 - 55));   // blue→white center
   const cG0 = Math.round(120 + w * (255 - 120));
-  const cB0 = Math.round(255);                     // stays 255
+  const cB0 = 255;
 
-  // mid: blue → green-blue
-  const cR1 = Math.round(40  + w * (30  - 40));
-  const cG1 = Math.round(100 + w * (180 - 100));  // 100→180 (green tint in mid)
-  const cB1 = Math.round(220 + w * (180 - 220));  // 220→180
+  // mid ring: blue → purple (high red, low green, high blue)
+  const cR1 = Math.round(40  + w * (150 - 40));   // 40→150 (red boost = purple)
+  const cG1 = Math.round(100 + w * (20  - 100));  // 100→20  (drop green = purple)
+  const cB1 = Math.round(210 + w * (210 - 210));  // 210 stays
 
   const g = ctx.createRadialGradient(sx-r*.32, sy-r*.36, r*.04, sx, sy, r);
-  g.addColorStop(0,    `rgba(${cR0},${cG0},${cB0},${b})`);    // white or blue center
-  g.addColorStop(0.4,  `rgba(${cR1},${cG1},${cB1},${b})`);    // blue→green-blue mid
+  g.addColorStop(0,    `rgba(${cR0},${cG0},${cB0},${b})`);    // white (peak) or blue
+  g.addColorStop(0.4,  `rgba(${cR1},${cG1},${cB1},${b})`);    // purple mid
   g.addColorStop(0.75, `rgba(40,90,200,${b})`);                // blue outer
   g.addColorStop(1,    `rgba(12,28,90,${b})`);                 // dark blue edge
   ctx.beginPath();ctx.arc(sx,sy,r,0,Math.PI*2);ctx.fillStyle=g;ctx.fill();
