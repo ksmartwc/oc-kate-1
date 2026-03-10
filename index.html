@@ -152,7 +152,7 @@ function render(ts){
   drawBackground();
   for(const d of allDots){
     const glow = glowFactor(d.sx,d.sy,cx,cy);
-    const r = DOT_R + 7.5 * glow; // size boost (3.5→11px), no huge bubbles
+    const r = DOT_R + 9.7 * glow; // size boost (3.5→13.2px, +20%)
     drawDot(d.sx,d.sy,r,d.face,glow);
   }
   requestAnimationFrame(render);
