@@ -121,8 +121,8 @@ function drawBackground(){
   ctx.scale(2.2, 1.0);   // stretch 2.2x wider than tall
   const glow = ctx.createRadialGradient(0, 0, 0, 0, 0, rBase);
   glow.addColorStop(0,    'rgba(10, 26,  80, 0.35)');  // slightly darker center
-  glow.addColorStop(0.25, 'rgba(18, 48, 140, 0.55)');  // glow ring
-  glow.addColorStop(0.55, 'rgba(12, 30,  95, 0.35)');
+  glow.addColorStop(0.25, 'rgba(12, 30, 95, 0.35)');   // glow ring
+  glow.addColorStop(0.55, 'rgba(8, 20, 65, 0.2)');
   glow.addColorStop(0.85, 'rgba(5,  12,  50, 0.12)');
   glow.addColorStop(1,    'rgba(0,   0,   0, 0)');
   ctx.fillStyle = glow;
