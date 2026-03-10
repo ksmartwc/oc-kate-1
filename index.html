@@ -22,28 +22,28 @@ const N = 8, C = 46;
 const R = [ Math.sqrt(3)/2*C,  C/2 ];
 const L = [-Math.sqrt(3)/2*C,  C/2 ];
 
-// Full cube height = 2*(N-1)*C  (top apex → front-bottom corner)
 const cubeH   = 2*(N-1)*C;
-const originY = H/2 - cubeH/2;   // top-back corner Y
+const originY = H/2 - cubeH/2;
 const originX = W/2;
 
 const origin      = [originX, originY];
 const rightOrigin = [originX+(N-1)*R[0], originY+(N-1)*R[1]];
 const leftOrigin  = [originX+(N-1)*L[0], originY+(N-1)*L[1]];
 
-// ── 6 perimeter corners (clockwise from top) ───────────
-const TOP       = [originX,              originY];
-const TOP_RIGHT = [rightOrigin[0],       rightOrigin[1]];
-const BOT_RIGHT = [rightOrigin[0],       rightOrigin[1]+(N-1)*C];
-const BOT_FRONT = [originX,              originY + 2*(N-1)*C];   // bottom tip
-const BOT_LEFT  = [leftOrigin[0],        leftOrigin[1]+(N-1)*C];
-const TOP_LEFT  = [leftOrigin[0],        leftOrigin[1]];
+// ── Key points ────────────────────────────────────────
+const CENTER    = [originX,        originY+(N-1)*C];  // 3-face meeting point
+const TOP       = [originX,        originY];
+const TOP_RIGHT = [rightOrigin[0], rightOrigin[1]];
+const BOT_RIGHT = [rightOrigin[0], rightOrigin[1]+(N-1)*C];
+const BOT_FRONT = [originX,        originY+2*(N-1)*C];
+const BOT_LEFT  = [leftOrigin[0],  leftOrigin[1]+(N-1)*C];
+const TOP_LEFT  = [leftOrigin[0],  leftOrigin[1]];
 
-// Orbit path — closed loop, CW
-const PATH = [TOP, TOP_RIGHT, BOT_RIGHT, BOT_FRONT, BOT_LEFT, TOP_LEFT];
-const CYCLE_MS = 6000; // full orbit duration
+// Path: center → all 6 corners in order → back to center
+const PATH = [CENTER, TOP, TOP_RIGHT, BOT_RIGHT, BOT_FRONT, BOT_LEFT, TOP_LEFT, CENTER];
+const CYCLE_MS = 7000;
 
-// ── Build all dots ────────────────────────────────────
+// ── Build all dots ─────────────────────────────────────
 function topFaceDot(i,j)   { return [origin[0]+i*R[0]+j*L[0],     origin[1]+i*R[1]+j*L[1]]; }
 function rightFaceDot(j,k) { return [rightOrigin[0]+j*L[0],        rightOrigin[1]+j*L[1]+k*C]; }
 function leftFaceDot(i,k)  { return [leftOrigin[0]+i*R[0],         leftOrigin[1]+i*R[1]+k*C]; }
@@ -59,7 +59,7 @@ for(let j=0;j<N;j++) for(let k=0;k<N;k++){ const[sx,sy]=rightFaceDot(j,k); addDo
 for(let i=0;i<N;i++) for(let k=0;k<N;k++){ const[sx,sy]=leftFaceDot(i,k);  addDot(sx,sy,'left',(N-1-i)+k+(N-1)); }
 allDots.sort((a,b)=>a.depth-b.depth);
 
-// ── Dot size: Gaussian from moving center ────────────
+// ── Dot sizing ────────────────────────────────────────
 const R_MAX=26, R_MIN=4;
 const SIGMA=(N-1)*Math.sqrt(3)/2*C*0.42;
 
@@ -75,14 +75,12 @@ function drawDot(sx,sy,r,face){
   const b=BRIGHT[face];
   const warmT=Math.max(0,Math.min(1,(r-R_MIN)/(R_MAX-R_MIN)));
   const fr=Math.round(30+warmT*70), fg=Math.round(100+warmT*90), fb=255;
-
   const g=ctx.createRadialGradient(sx-r*.32,sy-r*.36,r*.04,sx,sy,r);
   g.addColorStop(0,   `rgba(${Math.min(255,fr+120)},${Math.min(255,fg+50)},${fb},${b})`);
   g.addColorStop(0.35,`rgba(${fr+45},${fg+15},${fb},${b})`);
   g.addColorStop(0.7, `rgba(${fr},${fg},${fb},${b})`);
   g.addColorStop(1,   `rgba(${Math.round(fr*.2)},${Math.round(fg*.2)},${Math.round(fb*.4)},${b})`);
   ctx.beginPath();ctx.arc(sx,sy,r,0,Math.PI*2);ctx.fillStyle=g;ctx.fill();
-
   const h=ctx.createRadialGradient(sx-r*.28,sy-r*.34,0,sx-r*.28,sy-r*.34,r*.46);
   h.addColorStop(0,  `rgba(255,255,255,${b*.72})`);
   h.addColorStop(.4, `rgba(255,255,255,${b*.1})`);
@@ -90,15 +88,14 @@ function drawDot(sx,sy,r,face){
   ctx.beginPath();ctx.arc(sx,sy,r,0,Math.PI*2);ctx.fillStyle=h;ctx.fill();
 }
 
-// ── Smooth step ───────────────────────────────────────
 function smoothstep(t){ return t*t*(3-2*t); }
 
 function getCenter(elapsed){
-  const segs = PATH.length;
+  const segs = PATH.length - 1;
   const pos  = (elapsed / CYCLE_MS) * segs;
-  const seg  = Math.floor(pos) % segs;
-  const t    = smoothstep(pos - Math.floor(pos));
-  const a = PATH[seg], b = PATH[(seg+1) % segs];
+  const seg  = Math.min(segs-1, Math.floor(pos));
+  const t    = smoothstep(pos - seg);
+  const a = PATH[seg], b = PATH[seg+1];
   return [a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t];
 }
 
