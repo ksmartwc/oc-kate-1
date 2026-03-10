@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Animated Dot Sphere</title>
+  <title>Dot Cube</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { background: #0a0f2e; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+    body { background: #060d28; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
     canvas { display: block; }
   </style>
 </head>
@@ -18,93 +18,111 @@ const ctx = canvas.getContext('2d');
 const W = canvas.width, H = canvas.height;
 const cx = W/2, cy = H/2;
 
-const R = 240;
-const N = 280;
-const FOV = 500;
-const WAVE_SPEED = 0.4;  // radians per second (how fast wave sweeps)
-const WAVE_WIDTH = 0.18; // sigma — width of the gaussian pulse (0-1 range)
+const S = 200;
+const GRID = 7;
+const FOV = 1800;
+const DOT_R = 10; // uniform dot size in 3D space
 
-const golden = Math.PI * (3 - Math.sqrt(5));
-const dots = [];
+const AX = -0.52;
+const AY = Math.PI / 4;
 
-for (let i = 0; i < N; i++) {
-  const y = 1 - (i / (N-1)) * 2;
-  const r = Math.sqrt(1 - y*y);
-  const theta = golden * i;
-  const x = Math.cos(theta) * r;
-  const z = Math.sin(theta) * r;
+function dot3(a,b){return a[0]*b[0]+a[1]*b[1]+a[2]*b[2];}
+function norm(v){const l=Math.sqrt(dot3(v,v));return l<1e-6?v:v.map(x=>x/l);}
+function rotX(p,a){const[x,y,z]=p,c=Math.cos(a),s=Math.sin(a);return[x,y*c-z*s,y*s+z*c];}
+function rotY(p,a){const[x,y,z]=p,c=Math.cos(a),s=Math.sin(a);return[x*c+z*s,y,-x*s+z*c];}
 
-  const pos = [x*R, y*R, z*R];
-  const depthT = (z + 1) / 2; // 0=back, 1=front
+const faceDefs = [
+  { o:[-S,-S, S], u:[2*S,0,0], v:[0,2*S,0], n:[0,0, 1] },
+  { o:[ S,-S,-S], u:[-2*S,0,0], v:[0,2*S,0], n:[0,0,-1] },
+  { o:[-S,-S,-S], u:[0,0,2*S], v:[0,2*S,0], n:[-1,0,0] },
+  { o:[ S,-S, S], u:[0,0,-2*S], v:[0,2*S,0], n:[1,0, 0] },
+  { o:[-S,-S,-S], u:[2*S,0,0], v:[0,0,2*S], n:[0,-1,0] },
+  { o:[-S, S, S], u:[2*S,0,0], v:[0,0,-2*S], n:[0, 1,0] },
+];
 
-  // Wave phase: each dot's position along sweep direction (front→back = z axis)
-  // Normalize to 0–1 range
-  const phaseNorm = depthT; // front dots get hit first
+const light = norm([-0.4,-0.8,0.5]);
+const seen = new Map();
 
-  const camZ = pos[2] + R*1.5;
-  const scale = FOV / (FOV + camZ);
-  const sx = cx + pos[0]*scale;
-  const sy = cy + pos[1]*scale;
+faceDefs.forEach(face => {
+  let fn = [...face.n];
+  fn = rotX(fn, AX); fn = rotY(fn, AY);
+  if(fn[2] <= 0) return;
 
-  dots.push({ sx, sy, z: pos[2], depthT, phaseNorm });
-}
+  const diff = Math.max(0, dot3(fn, light));
+  const faceBright = 0.45 + diff * 0.55;
 
-dots.sort((a,b) => a.z - b.z);
+  for(let i=0; i<GRID; i++){
+    for(let j=0; j<GRID; j++){
+      const ti=i/(GRID-1), tj=j/(GRID-1);
+      const pos=[
+        face.o[0]+face.u[0]*ti+face.v[0]*tj,
+        face.o[1]+face.u[1]*ti+face.v[1]*tj,
+        face.o[2]+face.u[2]*ti+face.v[2]*tj,
+      ];
+      let p=[...pos];
+      p=rotX(p,AX); p=rotY(p,AY);
 
-function drawSphere(sx, sy, r, depthT){
-  if(r < 0.3) return;
-  const g = ctx.createRadialGradient(sx-r*.35, sy-r*.4, r*.03, sx, sy, r);
-  if(depthT > 0.6){
-    g.addColorStop(0,  `rgba(255,200,255,1)`);
-    g.addColorStop(.2, `rgba(200,120,255,1)`);
-    g.addColorStop(.5, `rgba(120,60,240,1)`);
-    g.addColorStop(1,  `rgba(20,10,80,1)`);
-  } else if(depthT > 0.3){
-    g.addColorStop(0,  `rgba(160,210,255,1)`);
-    g.addColorStop(.2, `rgba(60,140,255,1)`);
-    g.addColorStop(.5, `rgba(20,60,200,1)`);
-    g.addColorStop(1,  `rgba(5,10,60,1)`);
-  } else {
-    g.addColorStop(0,  `rgba(60,100,200,0.7)`);
-    g.addColorStop(.4, `rgba(20,40,140,0.7)`);
-    g.addColorStop(1,  `rgba(5,10,60,0.7)`);
+      const scale=FOV/(FOV+p[2]+600);
+      const sx=cx+p[0]*scale;
+      const sy=cy+p[1]*scale;
+      const r=DOT_R*scale; // natural perspective scale only — keeps faces flat
+
+      // Wave phase: use depth position
+      const depthNorm=Math.max(0,Math.min(1,(p[2]+S*1.8)/(S*3.5)));
+
+      const key=pos.map(x=>Math.round(x)).join(',');
+      if(!seen.has(key)||p[2]>seen.get(key).pz){
+        seen.set(key,{sx,sy,z:p[2],r,depthNorm,faceBright,pz:p[2]});
+      }
+    }
   }
-  ctx.beginPath(); ctx.arc(sx, sy, r, 0, Math.PI*2);
-  ctx.fillStyle = g; ctx.fill();
+});
 
-  const h = ctx.createRadialGradient(sx-r*.3, sy-r*.38, 0, sx-r*.3, sy-r*.38, r*.5);
-  h.addColorStop(0,  `rgba(255,255,255,${0.3 + depthT*0.55})`);
-  h.addColorStop(.4, `rgba(255,255,255,${depthT*0.15})`);
-  h.addColorStop(1,  'rgba(255,255,255,0)');
-  ctx.beginPath(); ctx.arc(sx, sy, r, 0, Math.PI*2);
-  ctx.fillStyle = h; ctx.fill();
+const dots=[...seen.values()].sort((a,b)=>a.z-b.z);
+
+function drawDot(sx,sy,r,alpha,depthNorm){
+  if(r<0.3||alpha<0.05)return;
+  ctx.globalAlpha=alpha;
+  const g=ctx.createRadialGradient(sx-r*.3,sy-r*.35,r*.03,sx,sy,r);
+  if(depthNorm>0.65){
+    g.addColorStop(0, 'rgba(220,180,255,1)');
+    g.addColorStop(.3,'rgba(150,90,255,1)');
+    g.addColorStop(.7,'rgba(70,30,200,1)');
+    g.addColorStop(1, 'rgba(15,5,60,1)');
+  } else {
+    g.addColorStop(0, 'rgba(130,200,255,1)');
+    g.addColorStop(.3,'rgba(40,120,255,1)');
+    g.addColorStop(.7,'rgba(10,45,190,1)');
+    g.addColorStop(1, 'rgba(3,8,55,1)');
+  }
+  ctx.beginPath();ctx.arc(sx,sy,r,0,Math.PI*2);
+  ctx.fillStyle=g;ctx.fill();
+  const h=ctx.createRadialGradient(sx-r*.28,sy-r*.33,0,sx-r*.28,sy-r*.33,r*.44);
+  h.addColorStop(0,'rgba(255,255,255,0.7)');
+  h.addColorStop(.4,'rgba(255,255,255,0.12)');
+  h.addColorStop(1,'rgba(255,255,255,0)');
+  ctx.beginPath();ctx.arc(sx,sy,r,0,Math.PI*2);
+  ctx.fillStyle=h;ctx.fill();
+  ctx.globalAlpha=1;
 }
 
-let t = 0;
+let t=0;
+const WAVE_W=0.14;
 
 function render(){
-  ctx.clearRect(0, 0, W, H);
-  t += 0.016;
+  ctx.clearRect(0,0,W,H);
+  t+=0.013;
+  const wavePos=(t*0.32)%1;
 
-  // Single wave position sweeping 0 → 1 → 0 → 1 ...
-  // Use sawtooth: wavePos goes 0→1 over period, then resets
-  const period = (Math.PI * 2) / WAVE_SPEED;
-  const wavePos = (t * WAVE_SPEED / (Math.PI * 2)) % 1;
+  for(const d of dots){
+    let dist=Math.abs(d.depthNorm-wavePos);
+    dist=Math.min(dist,1-dist);
+    const pulse=Math.exp(-(dist*dist)/(2*WAVE_W*WAVE_W));
 
-  for (const d of dots) {
-    let dist = Math.abs(d.phaseNorm - wavePos);
-    // Wrap around
-    dist = Math.min(dist, 1 - dist);
-
-    // Gaussian pulse — single crest
-    const pulse = Math.exp(-(dist * dist) / (2 * WAVE_WIDTH * WAVE_WIDTH));
-
-    const baseR = 2 + d.depthT * 18;
-    const r = baseR * (0.65 + 0.6 * pulse);
-
-    drawSphere(d.sx, d.sy, r, d.depthT);
+    // Wave changes BRIGHTNESS only — dots stay same size
+    const alpha=d.faceBright*(0.6+0.4*pulse);
+    drawDot(d.sx,d.sy,d.r,alpha,d.depthNorm);
   }
-
   requestAnimationFrame(render);
 }
 render();
