@@ -30,8 +30,8 @@ const origin      = [originX, originY];
 const rightOrigin = [originX+(N-1)*R[0], originY+(N-1)*R[1]];
 const leftOrigin  = [originX+(N-1)*L[0], originY+(N-1)*L[1]];
 
-// ── Key points ────────────────────────────────────────
-const CENTER    = [originX,        originY+(N-1)*C];  // 3-face meeting point
+// ── Key path points ────────────────────────────────────
+const CENTER    = [originX,        originY+(N-1)*C];
 const TOP       = [originX,        originY];
 const TOP_RIGHT = [rightOrigin[0], rightOrigin[1]];
 const BOT_RIGHT = [rightOrigin[0], rightOrigin[1]+(N-1)*C];
@@ -39,9 +39,9 @@ const BOT_FRONT = [originX,        originY+2*(N-1)*C];
 const BOT_LEFT  = [leftOrigin[0],  leftOrigin[1]+(N-1)*C];
 const TOP_LEFT  = [leftOrigin[0],  leftOrigin[1]];
 
-// Path: center → all 6 corners in order → back to center
-const PATH = [CENTER, TOP, TOP_LEFT, BOT_LEFT, BOT_FRONT, BOT_RIGHT, TOP_RIGHT, CENTER]; // CCW
-const CYCLE_MS = 11000; // slower
+// CCW: center → top → top-left → bot-left → bot-front → bot-right → top-right → center
+const PATH = [CENTER, TOP, TOP_LEFT, BOT_LEFT, BOT_FRONT, BOT_RIGHT, TOP_RIGHT, CENTER];
+const CYCLE_MS = 11000;
 
 // ── Build all dots ─────────────────────────────────────
 function topFaceDot(i,j)   { return [origin[0]+i*R[0]+j*L[0],     origin[1]+i*R[1]+j*L[1]]; }
@@ -59,8 +59,8 @@ for(let j=0;j<N;j++) for(let k=0;k<N;k++){ const[sx,sy]=rightFaceDot(j,k); addDo
 for(let i=0;i<N;i++) for(let k=0;k<N;k++){ const[sx,sy]=leftFaceDot(i,k);  addDot(sx,sy,'left',(N-1-i)+k+(N-1)); }
 allDots.sort((a,b)=>a.depth-b.depth);
 
-// ── Dot sizing ────────────────────────────────────────
-const R_MAX=26, R_MIN=4;
+// ── Sizing ─────────────────────────────────────────────
+const R_MAX=26, R_MIN=4.5;
 const SIGMA=(N-1)*Math.sqrt(3)/2*C*0.42;
 
 function dotRadius(sx,sy,cx,cy){
@@ -68,19 +68,53 @@ function dotRadius(sx,sy,cx,cy){
   return R_MIN+(R_MAX-R_MIN)*Math.exp(-(d*d)/(2*SIGMA*SIGMA));
 }
 
-const BRIGHT={top:1.0,left:0.68,right:0.52};
+// How "lit up" a dot is: 0=resting, 1=fully active
+function activationT(r){ return Math.max(0, (r-R_MIN)/(R_MAX-R_MIN)); }
+
+const FACE_DIM = {top:0.55, left:0.38, right:0.28}; // face shading for resting dots
 
 function drawDot(sx,sy,r,face){
-  if(r<0.5)return;
-  const b=BRIGHT[face];
-  const warmT=Math.max(0,Math.min(1,(r-R_MIN)/(R_MAX-R_MIN)));
+  if(r<0.3)return;
+  const t  = activationT(r);
+  const fd = FACE_DIM[face];
+
+  if(t < 0.01){
+    // ── Resting dot: just slightly lighter than background ──
+    // Background is #060d28 = rgb(6,13,40). Add a subtle tint.
+    const alpha = fd * 0.55;
+    ctx.beginPath(); ctx.arc(sx,sy,r,0,Math.PI*2);
+    ctx.fillStyle = `rgba(18, 38, 100, ${alpha})`;
+    ctx.fill();
+    // tiny specular
+    ctx.beginPath(); ctx.arc(sx-r*.25, sy-r*.3, r*.3, 0, Math.PI*2);
+    ctx.fillStyle = `rgba(60,100,200,${alpha*0.4})`;
+    ctx.fill();
+    return;
+  }
+
+  // ── Active/big dot: glow shadow + full render ──
+  const glowR   = r * (1 + t * 2.5);   // glow radius scales with activation
+  const glowAlpha = t * 0.55;
+
+  // Outer glow halo
+  ctx.shadowBlur  = r * (2 + t * 5);
+  ctx.shadowColor = `rgba(80,160,255,${t * 0.7})`;
+
+  // Body gradient
+  const warmT = t;
   const fr=Math.round(30+warmT*70), fg=Math.round(100+warmT*90), fb=255;
+  const b = 0.7 + t * 0.3;  // brightness
+
   const g=ctx.createRadialGradient(sx-r*.32,sy-r*.36,r*.04,sx,sy,r);
   g.addColorStop(0,   `rgba(${Math.min(255,fr+120)},${Math.min(255,fg+50)},${fb},${b})`);
   g.addColorStop(0.35,`rgba(${fr+45},${fg+15},${fb},${b})`);
   g.addColorStop(0.7, `rgba(${fr},${fg},${fb},${b})`);
-  g.addColorStop(1,   `rgba(${Math.round(fr*.2)},${Math.round(fg*.2)},${Math.round(fb*.4)},${b})`);
+  g.addColorStop(1,   `rgba(${Math.round(fr*.15)},${Math.round(fg*.15)},${Math.round(fb*.35)},${b})`);
   ctx.beginPath();ctx.arc(sx,sy,r,0,Math.PI*2);ctx.fillStyle=g;ctx.fill();
+
+  ctx.shadowBlur = 0; ctx.shadowColor = 'transparent';
+
+  // Specular
   const h=ctx.createRadialGradient(sx-r*.28,sy-r*.34,0,sx-r*.28,sy-r*.34,r*.46);
   h.addColorStop(0,  `rgba(255,255,255,${b*.72})`);
   h.addColorStop(.4, `rgba(255,255,255,${b*.1})`);
@@ -88,22 +122,21 @@ function drawDot(sx,sy,r,face){
   ctx.beginPath();ctx.arc(sx,sy,r,0,Math.PI*2);ctx.fillStyle=h;ctx.fill();
 }
 
-function smoothstep(t){ return t*t*(3-2*t); }
-
 function getCenter(elapsed){
-  const segs = PATH.length - 1;
-  const pos  = (elapsed / CYCLE_MS) * segs;
+  const segs = PATH.length-1;
+  const pos  = (elapsed/CYCLE_MS)*segs;
   const seg  = Math.min(segs-1, Math.floor(pos));
-  const t    = pos - seg; // linear = constant speed
-  const a = PATH[seg], b = PATH[seg+1];
+  const t    = pos - seg; // linear
+  const a=PATH[seg], b=PATH[seg+1];
   return [a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t];
 }
 
-let start = null;
+let start=null;
 function render(ts){
-  if(!start) start = ts;
-  const [cx,cy] = getCenter((ts-start) % CYCLE_MS);
+  if(!start) start=ts;
+  const [cx,cy]=getCenter((ts-start)%CYCLE_MS);
   ctx.clearRect(0,0,W,H);
+  ctx.shadowBlur=0;
   for(const d of allDots) drawDot(d.sx,d.sy,dotRadius(d.sx,d.sy,cx,cy),d.face);
   requestAnimationFrame(render);
 }
