@@ -6,27 +6,25 @@
   <title>Animated Dot Cube</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { background: #07071a; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+    body { background: #0a0f2e; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
     canvas { display: block; }
   </style>
 </head>
 <body>
-<canvas id="c" width="700" height="700"></canvas>
+<canvas id="c" width="800" height="800"></canvas>
 <script>
 const canvas = document.getElementById('c');
 const ctx = canvas.getContext('2d');
 const W = canvas.width, H = canvas.height;
 const cx = W/2, cy = H/2;
 
-const S = 190;    // half cube size
-const GRID = 6;   // dots per edge
-const DOT_R = 11; // uniform base radius
-const FOV = 1100; // high FOV = less perspective distortion = flatter faces
+const S = 200;   // half cube size
+const GRID = 8;  // dots per edge — more dots like KPMG
+const FOV = 420; // low FOV = dramatic perspective depth
 
 function dot3(a,b){return a[0]*b[0]+a[1]*b[1]+a[2]*b[2];}
 function norm(v){const l=Math.sqrt(dot3(v,v));return l<1e-6?v:v.map(x=>x/l);}
 
-// 6 cube faces [origin, u-step, v-step, face-normal]
 const faceDefs = [
   { o:[-S,-S, S], u:[2*S,0,0], v:[0,2*S,0], n:[0,0, 1] },
   { o:[ S,-S,-S], u:[-2*S,0,0], v:[0,2*S,0], n:[0,0,-1] },
@@ -56,63 +54,80 @@ faceDefs.forEach(face => {
 function rotX(p,a){const[x,y,z]=p,c=Math.cos(a),s=Math.sin(a);return[x,y*c-z*s,y*s+z*c];}
 function rotY(p,a){const[x,y,z]=p,c=Math.cos(a),s=Math.sin(a);return[x*c+z*s,y,-x*s+z*c];}
 
-function drawSphere(sx, sy, r, bright){
-  if(r < 0.5) return;
-  const g = ctx.createRadialGradient(sx-r*.35, sy-r*.38, r*.04, sx, sy, r);
-  g.addColorStop(0,  `rgba(235,215,255,${bright})`);
-  g.addColorStop(.3, `rgba(155,85,248,${bright})`);
-  g.addColorStop(.7, `rgba(85,25,178,${bright})`);
-  g.addColorStop(1,  `rgba(18,4,55,${bright})`);
+function drawSphere(sx, sy, r, bright, isCenter){
+  if(r < 0.4) return;
+
+  // Blue palette like KPMG, pink/purple highlight at center
+  const hue = isCenter ? 260 : 220; // purple for bright, blue for dark
+  
+  const g = ctx.createRadialGradient(sx-r*.35, sy-r*.4, r*.03, sx, sy, r);
+  if(isCenter){
+    g.addColorStop(0,  `rgba(255,200,255,${bright})`);
+    g.addColorStop(.2, `rgba(200,120,255,${bright})`);
+    g.addColorStop(.5, `rgba(120,60,240,${bright})`);
+    g.addColorStop(1,  `rgba(20,10,80,${bright})`);
+  } else {
+    g.addColorStop(0,  `rgba(160,210,255,${bright})`);
+    g.addColorStop(.2, `rgba(60,140,255,${bright})`);
+    g.addColorStop(.5, `rgba(20,60,200,${bright})`);
+    g.addColorStop(1,  `rgba(5,10,60,${bright})`);
+  }
   ctx.beginPath(); ctx.arc(sx, sy, r, 0, Math.PI*2);
   ctx.fillStyle = g; ctx.fill();
-  const h = ctx.createRadialGradient(sx-r*.3, sy-r*.38, 0, sx-r*.3, sy-r*.38, r*.48);
-  h.addColorStop(0,  `rgba(255,255,255,${bright*.75})`);
-  h.addColorStop(.5, `rgba(255,255,255,${bright*.14})`);
+
+  // Specular highlight
+  const h = ctx.createRadialGradient(sx-r*.3, sy-r*.38, 0, sx-r*.3, sy-r*.38, r*.5);
+  h.addColorStop(0,  `rgba(255,255,255,${bright*.85})`);
+  h.addColorStop(.4, `rgba(255,255,255,${bright*.2})`);
   h.addColorStop(1,  'rgba(255,255,255,0)');
   ctx.beginPath(); ctx.arc(sx, sy, r, 0, Math.PI*2);
   ctx.fillStyle = h; ctx.fill();
 }
 
 let angleX = 0.42, angleY = 0.62, floatT = 0;
-const light = norm([-0.35, -0.75, 0.65]);
+let cubeFloatY = 0;
+const light = norm([-0.3, -0.7, 0.65]);
 
 function render(){
   ctx.clearRect(0, 0, W, H);
-  angleY += 0.018;
-  angleX += 0.006;
+  angleY += 0.015;
+  angleX += 0.004;
   floatT += 0.018;
-cubeFloatY = Math.sin(floatT * 0.6) * 18;
-  const fy = 0; // float whole cube instead
+  cubeFloatY = Math.sin(floatT * 0.6) * 18;
 
   const visible = new Map();
 
   allDots.forEach(d => {
     let n = [...d.faceN];
     n = rotX(n, angleX); n = rotY(n, angleY);
-    if (n[2] <= 0.02) return; // hard backface cull
+    if (n[2] <= 0.02) return;
 
-    let p = [d.pos[0], d.pos[1]+fy, d.pos[2]];
+    let p = [...d.pos];
     p = rotX(p, angleX); p = rotY(p, angleY);
 
-    const scale = FOV / (FOV + p[2] + 400);
+    // Dramatic perspective: closer = much bigger
+    const camZ = p[2] + S*1.8;
+    const scale = FOV / (FOV + camZ);
     const sx = cx + p[0] * scale;
     const sy = cy + cubeFloatY + p[1] * scale;
 
-    // Uniform dot size — just slight perspective scale for depth realism
-    const r = DOT_R * scale;
+    // Depth-based radius — dramatic like KPMG
+    const depthT = Math.max(0, Math.min(1, 1 - camZ / (S*3.5)));
+    const r = 2.5 + depthT * 20; // tiny at back, large at front
 
     const diff = Math.max(0, dot3(n, light));
-    const bright = 0.45 + diff * 0.55;
+    const bright = 0.4 + diff * 0.6;
+    const isCenter = depthT > 0.55; // purple/pink for closest dots
 
     const key = d.pos.map(x=>Math.round(x)).join(',');
     if (!visible.has(key) || p[2] > visible.get(key).pz) {
-      visible.set(key, { sx, sy, z: p[2], r, bright, pz: p[2] });
+      visible.set(key, { sx, sy, z: p[2], r, bright, isCenter, pz: p[2] });
     }
   });
 
   [...visible.values()]
     .sort((a,b) => a.z - b.z)
-    .forEach(d => drawSphere(d.sx, d.sy, d.r, d.bright));
+    .forEach(d => drawSphere(d.sx, d.sy, d.r, d.bright, d.isCenter));
 
   requestAnimationFrame(render);
 }
