@@ -41,7 +41,7 @@ const centerY = originY + (N-1)*C;   // = origin + (N-1)*(R+L) in Y = originY+(N
 const MAX_D = (N-1) * Math.sqrt(3)/2 * C * 1.2;
 const SIGMA  = MAX_D * 0.45;   // Gaussian spread
 
-const R_MAX = 16, R_MIN = 4.5; // dot radius range
+const R_MAX = 26, R_MIN = 4; // dot radius range
 
 function dotRadius(sx, sy){
   const d = Math.hypot(sx - centerX, sy - centerY);
