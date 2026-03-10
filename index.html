@@ -61,22 +61,21 @@ for(let i=0;i<N;i++) for(let k=0;k<N;k++){ const[sx,sy]=leftFaceDot(i,k);  addDo
 allDots.sort((a,b)=>a.depth-b.depth);
 
 // ── Dot sizing ────────────────────────────────────────
-const R_MAX=15, R_MIN=3;
-const SIGMA=(N-1)*Math.sqrt(3)/2*C*0.42;
+const DOT_R = 3.5;  // uniform dot radius — no size-based bubbles
+const SIGMA = (N-1)*Math.sqrt(3)/2*C*0.42;
 
-function dotRadius(sx,sy,cx,cy){
+function glowFactor(sx,sy,cx,cy){
   const d=Math.hypot(sx-cx,sy-cy);
-  return R_MIN+(R_MAX-R_MIN)*Math.exp(-(d*d)/(2*SIGMA*SIGMA));
+  return Math.exp(-(d*d)/(2*SIGMA*SIGMA));
 }
 
-// Stronger face shading for 3D depth
+// Face shading for 3D depth
 const BRIGHT={top:1.0, left:0.60, right:0.38};
 
-function drawDot(sx,sy,r,face){
-  if(r<0.5)return;
+function drawDot(sx,sy,face,glow){
+  const r=DOT_R;
   const b=BRIGHT[face];
-  const warmT=Math.max(0,Math.min(1,(r-R_MIN)/(R_MAX-R_MIN)));
-  // Base color: small dots are clearly visible lighter blue; big dots are bright
+  const warmT=glow; // 0=base blue, 1=bright highlight
   const fr=Math.round(55+warmT*65), fg=Math.round(120+warmT*80), fb=255;
   const g=ctx.createRadialGradient(sx-r*.32,sy-r*.36,r*.04,sx,sy,r);
   g.addColorStop(0,   `rgba(${Math.min(255,fr+100)},${Math.min(255,fg+50)},${fb},${b})`);
@@ -153,7 +152,7 @@ function render(ts){
   if(!start) start = ts;
   const [cx,cy] = getCenter((ts-start) % CYCLE_MS);
   drawBackground();
-  for(const d of allDots) drawDot(d.sx,d.sy,dotRadius(d.sx,d.sy,cx,cy),d.face);
+  for(const d of allDots) drawDot(d.sx,d.sy,d.face,glowFactor(d.sx,d.sy,cx,cy));
   requestAnimationFrame(render);
 }
 requestAnimationFrame(render);
