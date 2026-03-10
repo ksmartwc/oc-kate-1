@@ -40,8 +40,8 @@ const BOT_LEFT  = [leftOrigin[0],  leftOrigin[1]+(N-1)*C];
 const TOP_LEFT  = [leftOrigin[0],  leftOrigin[1]];
 
 // Path: center → all 6 corners in order → back to center
-const PATH = [CENTER, TOP, TOP_RIGHT, BOT_RIGHT, BOT_FRONT, BOT_LEFT, TOP_LEFT, CENTER];
-const CYCLE_MS = 7000;
+const PATH = [CENTER, TOP, TOP_LEFT, BOT_LEFT, BOT_FRONT, BOT_RIGHT, TOP_RIGHT, CENTER]; // CCW
+const CYCLE_MS = 11000; // slower
 
 // ── Build all dots ─────────────────────────────────────
 function topFaceDot(i,j)   { return [origin[0]+i*R[0]+j*L[0],     origin[1]+i*R[1]+j*L[1]]; }
@@ -94,7 +94,7 @@ function getCenter(elapsed){
   const segs = PATH.length - 1;
   const pos  = (elapsed / CYCLE_MS) * segs;
   const seg  = Math.min(segs-1, Math.floor(pos));
-  const t    = smoothstep(pos - seg);
+  const t    = pos - seg; // linear = constant speed
   const a = PATH[seg], b = PATH[seg+1];
   return [a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t];
 }
