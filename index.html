@@ -84,14 +84,14 @@ function drawSphere(sx, sy, r, bright, isCenter){
   ctx.fillStyle = h; ctx.fill();
 }
 
-let angleX = 0.42, angleY = 0.62, floatT = 0;
+let angleX = 0.38, angleY = 0.62, floatT = 0;
 let cubeFloatY = 0;
 const light = norm([-0.3, -0.7, 0.65]);
 
 function render(){
   ctx.clearRect(0, 0, W, H);
-  angleY += 0.015;
-  angleX += 0.004;
+  angleY += 0.016;
+  // angleX is fixed — no tumbling
   floatT += 0.018;
   cubeFloatY = Math.sin(floatT * 0.6) * 18;
 
