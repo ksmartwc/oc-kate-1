@@ -18,7 +18,7 @@ const ctx    = canvas.getContext('2d');
 const W = canvas.width, H = canvas.height;
 
 // ── Isometric grid ─────────────────────────────────────
-const N = 8, C = 46;
+const N = 8, C = 36;
 const R = [ Math.sqrt(3)/2*C,  C/2 ];
 const L = [-Math.sqrt(3)/2*C,  C/2 ];
 
@@ -60,7 +60,7 @@ for(let i=0;i<N;i++) for(let k=0;k<N;k++){ const[sx,sy]=leftFaceDot(i,k);  addDo
 allDots.sort((a,b)=>a.depth-b.depth);
 
 // ── Dot sizing ────────────────────────────────────────
-const R_MAX=26, R_MIN=4;
+const R_MAX=20, R_MIN=3.5;
 const SIGMA=(N-1)*Math.sqrt(3)/2*C*0.42;
 
 function dotRadius(sx,sy,cx,cy){
