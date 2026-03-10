@@ -72,11 +72,11 @@ function glowFactor(sx,sy,cx,cy){
 const BRIGHT={top:1.0, left:0.60, right:0.38};
 
 function drawDot(sx,sy,r,face,glow){
-  const b=BRIGHT[face] * (0.8 + 0.2 * glow); // smaller dots 20% darker
+  const b=BRIGHT[face] * (0.64 + 0.36 * glow); // small dots 40% darker total (2x -20%)
   const warmT=glow; // 0=base blue, 1=bright highlight
   const fr=Math.round(55+warmT*65);
-  const fg=Math.round(120+warmT*110); // bigger dots get green boost
-  const fb=Math.round(255-warmT*30);  // slight blue drop = green tint
+  const fg=Math.round(120+warmT*132); // +20% more green (was 110)
+  const fb=Math.round(255-warmT*36);  // +20% more blue drop = more green tint
   const g=ctx.createRadialGradient(sx-r*.32,sy-r*.36,r*.04,sx,sy,r);
   g.addColorStop(0,   `rgba(${Math.min(255,fr+100)},${Math.min(255,fg+50)},${fb},${b})`);
   g.addColorStop(0.35,`rgba(${fr+40},${fg+15},${fb},${b})`);
