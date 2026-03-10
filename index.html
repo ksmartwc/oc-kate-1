@@ -19,8 +19,9 @@ const W = canvas.width, H = canvas.height;
 
 // ── Isometric grid ─────────────────────────────────────
 const N = 8, C = 27;
-const R = [ Math.sqrt(3)/2*C,  C/2 ];
-const L = [-Math.sqrt(3)/2*C,  C/2 ];
+const PHI = 0.12; // ~7° left rotation
+const R = [(Math.cos(PHI)-Math.sin(PHI))*Math.sqrt(3)/2*C, (Math.cos(PHI)+Math.sin(PHI))*C/2];
+const L = [-(Math.sin(PHI)+Math.cos(PHI))*Math.sqrt(3)/2*C, (Math.cos(PHI)-Math.sin(PHI))*C/2];
 
 const cubeH   = 2*(N-1)*C;
 const originY = H/2 - cubeH/2;
@@ -61,7 +62,7 @@ allDots.sort((a,b)=>a.depth-b.depth);
 
 // ── Dot sizing ────────────────────────────────────────
 const DOT_R = 3.5;  // uniform dot radius — no size-based bubbles
-const SIGMA = (N-1)*Math.sqrt(3)/2*C*0.42;
+const SIGMA = (N-1)*Math.sqrt(3)/2*C*0.65; // wider cluster area
 
 function glowFactor(sx,sy,cx,cy){
   const d=Math.hypot(sx-cx,sy-cy);
