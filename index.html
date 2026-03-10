@@ -14,115 +14,102 @@
 <canvas id="c" width="800" height="800"></canvas>
 <script>
 const canvas = document.getElementById('c');
-const ctx = canvas.getContext('2d');
+const ctx    = canvas.getContext('2d');
 const W = canvas.width, H = canvas.height;
 
-// ── Pure isometric layout ────────────────────────────────────
-const N = 8;      // dots per edge (inclusive)
-const C = 46;     // cell size in px
+// ── Isometric grid ───────────────────────────────────────────
+const N = 8;    // dots per edge
+const C = 46;   // cell size px
 
-// 3 isometric axis step vectors (screen-space)
-const R = [ Math.sqrt(3)/2 * C,  C/2 ];  // "right"  axis
-const L = [-Math.sqrt(3)/2 * C,  C/2 ];  // "left"   axis
-const D = [ 0,                   C   ];  // "down"   axis (along cube sides)
+const R = [ Math.sqrt(3)/2*C,  C/2 ];
+const L = [-Math.sqrt(3)/2*C,  C/2 ];
+const D = [ 0, C ];
 
-// Top-back corner of cube (topmost point on screen)
-const cubeTopY = H/2 - ((N-1)*C/2 + (N-1)*C) / 2 - 20;
-const origin   = [W/2, cubeTopY];   // back corner of top face
+const cubeH    = (N-1)*C/2 + (N-1)*C;          // total visual height
+const originY  = H/2 - cubeH/2;                 // top back corner Y
+const originX  = W/2;
 
-// Compute dot screen position for top face point (i along R, j along L)
-function topFaceDot(i, j){
-  return [origin[0] + i*R[0] + j*L[0],
-          origin[1] + i*R[1] + j*L[1]];
+const origin      = [originX, originY];
+const rightOrigin = [originX+(N-1)*R[0], originY+(N-1)*R[1]];
+const leftOrigin  = [originX+(N-1)*L[0], originY+(N-1)*L[1]];
+
+// "Center" = front corner of top face (meeting point of all 3 faces)
+const centerX = originX;
+const centerY = originY + (N-1)*C;   // = origin + (N-1)*(R+L) in Y = originY+(N-1)*C
+
+// Max distance from center (approx half the hex width)
+const MAX_D = (N-1) * Math.sqrt(3)/2 * C * 1.2;
+const SIGMA  = MAX_D * 0.45;   // Gaussian spread
+
+const R_MAX = 16, R_MIN = 4.5; // dot radius range
+
+function dotRadius(sx, sy){
+  const d = Math.hypot(sx - centerX, sy - centerY);
+  const t = Math.exp(-(d*d)/(2*SIGMA*SIGMA));   // 1=center, 0=edge
+  return R_MIN + (R_MAX - R_MIN) * t;
 }
 
-// Right face origin = right corner of top face
-const rightOrigin = [origin[0]+(N-1)*R[0], origin[1]+(N-1)*R[1]];
-// Compute dot for right face (j along L = depth, k along D = height)
-function rightFaceDot(j, k){
-  return [rightOrigin[0] + j*L[0],
-          rightOrigin[1] + j*L[1] + k*D[1]];
-}
+function topFaceDot(i,j)   { return [origin[0]+i*R[0]+j*L[0],      origin[1]+i*R[1]+j*L[1]]; }
+function rightFaceDot(j,k) { return [rightOrigin[0]+j*L[0],         rightOrigin[1]+j*L[1]+k*D[1]]; }
+function leftFaceDot(i,k)  { return [leftOrigin[0]+i*R[0],          leftOrigin[1]+i*R[1]+k*D[1]]; }
 
-// Left face origin = left corner of top face
-const leftOrigin  = [origin[0]+(N-1)*L[0], origin[1]+(N-1)*L[1]];
-// Compute dot for left face (i along R = depth, k along D = height)
-function leftFaceDot(i, k){
-  return [leftOrigin[0] + i*R[0],
-          leftOrigin[1] + i*R[1] + k*D[1]];
-}
-
-// ── Collect all dots ─────────────────────────────────────────
 const allDots = [];
-const seenKey = new Set();
+const seen    = new Set();
 
 function addDot(sx, sy, face, depth){
   const key = `${Math.round(sx)},${Math.round(sy)}`;
-  if(seenKey.has(key)) return;
-  seenKey.add(key);
+  if(seen.has(key)) return;
+  seen.add(key);
   allDots.push({sx, sy, face, depth});
 }
 
-// Top face — back row first (depth = i+j, low = far)
 for(let i=0;i<N;i++) for(let j=0;j<N;j++){
-  const [sx,sy] = topFaceDot(i,j);
-  addDot(sx, sy, 'top', i+j);
+  const [sx,sy]=topFaceDot(i,j);
+  addDot(sx,sy,'top',i+j);
 }
-// Right face — far depth first
 for(let j=0;j<N;j++) for(let k=0;k<N;k++){
-  const [sx,sy] = rightFaceDot(j,k);
-  addDot(sx, sy, 'right', (N-1-j) + k + (N-1));
+  const [sx,sy]=rightFaceDot(j,k);
+  addDot(sx,sy,'right',(N-1-j)+k+(N-1));
 }
-// Left face — far depth first
 for(let i=0;i<N;i++) for(let k=0;k<N;k++){
-  const [sx,sy] = leftFaceDot(i,k);
-  addDot(sx, sy, 'left', (N-1-i) + k + (N-1));
+  const [sx,sy]=leftFaceDot(i,k);
+  addDot(sx,sy,'left',(N-1-i)+k+(N-1));
 }
 
-// Sort back-to-front
-allDots.sort((a,b) => a.depth - b.depth);
+allDots.sort((a,b)=>a.depth-b.depth);
 
-// ── Draw ─────────────────────────────────────────────────────
-const DOT_R = 9.5;
+// Face brightness
+const BRIGHT = { top:1.0, left:0.68, right:0.52 };
 
-// Face brightness (light from upper-left)
-const FACE_BRIGHT = { top: 1.0, left: 0.72, right: 0.55 };
+function drawDot(sx, sy, r, face){
+  if(r<0.3) return;
+  const b = BRIGHT[face];
 
-// Color per face: top=cyan-blue, left=mid-blue, right=deep-blue
-function faceColor(face, t){ // t=0..1 depth within face
-  if(face==='top')   return { r:80+t*60,  g:160+t*60, b:255 };
-  if(face==='left')  return { r:30+t*40,  g:90+t*50,  b:220+t*30 };
-                     return { r:20+t*30,  g:60+t*40,  b:190+t*40 }; // right
-}
+  // Blue color, slightly warmer toward center (bigger dots)
+  const warmT = Math.max(0,Math.min(1,(r-R_MIN)/(R_MAX-R_MIN)));
+  const fr = Math.round(30  + warmT*70);
+  const fg = Math.round(100 + warmT*90);
+  const fb = 255;
 
-function drawDot(sx, sy, r, face, localT){
-  const b = FACE_BRIGHT[face];
-  const {r:fr,g:fg,b:fb} = faceColor(face, localT);
-
-  // Body gradient
   const g = ctx.createRadialGradient(sx-r*.32, sy-r*.36, r*.04, sx, sy, r);
-  g.addColorStop(0,   `rgba(${Math.min(255,fr+110)},${Math.min(255,fg+50)},${fb},${b})`);
-  g.addColorStop(0.35,`rgba(${fr+40},${fg+15},${fb},${b})`);
-  g.addColorStop(0.7, `rgba(${fr},${fg},${fb},${b})`);
-  g.addColorStop(1,   `rgba(${Math.round(fr*.25)},${Math.round(fg*.25)},${Math.round(fb*.5)},${b})`);
+  g.addColorStop(0,    `rgba(${Math.min(255,fr+120)},${Math.min(255,fg+50)},${fb},${b})`);
+  g.addColorStop(0.35, `rgba(${fr+45},${fg+15},${fb},${b})`);
+  g.addColorStop(0.7,  `rgba(${fr},${fg},${fb},${b})`);
+  g.addColorStop(1,    `rgba(${Math.round(fr*.2)},${Math.round(fg*.2)},${Math.round(fb*.4)},${b})`);
   ctx.beginPath(); ctx.arc(sx,sy,r,0,Math.PI*2);
   ctx.fillStyle=g; ctx.fill();
 
-  // Specular
-  const h = ctx.createRadialGradient(sx-r*.28,sy-r*.34,0,sx-r*.28,sy-r*.34,r*.46);
+  const h=ctx.createRadialGradient(sx-r*.28,sy-r*.34,0,sx-r*.28,sy-r*.34,r*.46);
   h.addColorStop(0,  `rgba(255,255,255,${b*.72})`);
-  h.addColorStop(.4, `rgba(255,255,255,${b*.10})`);
+  h.addColorStop(.4, `rgba(255,255,255,${b*.1})`);
   h.addColorStop(1,  'rgba(255,255,255,0)');
   ctx.beginPath(); ctx.arc(sx,sy,r,0,Math.PI*2);
   ctx.fillStyle=h; ctx.fill();
 }
 
 ctx.clearRect(0,0,W,H);
-
-const maxD = allDots.reduce((m,d)=>Math.max(m,d.depth),0);
 for(const d of allDots){
-  const t = d.depth / maxD;
-  drawDot(d.sx, d.sy, DOT_R, d.face, t);
+  drawDot(d.sx, d.sy, dotRadius(d.sx, d.sy), d.face);
 }
 </script>
 </body>
