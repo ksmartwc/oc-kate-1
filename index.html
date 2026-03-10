@@ -68,7 +68,8 @@ function dotRadius(sx,sy,cx,cy){
   return R_MIN+(R_MAX-R_MIN)*Math.exp(-(d*d)/(2*SIGMA*SIGMA));
 }
 
-const BRIGHT={top:1.0,left:0.68,right:0.52};
+// Stronger face shading for 3D depth
+const BRIGHT={top:1.0, left:0.60, right:0.38};
 
 function drawDot(sx,sy,r,face){
   if(r<0.5)return;
@@ -100,11 +101,36 @@ function getCenter(elapsed){
   return [a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t];
 }
 
+// Cube visual center for background glow
+const cubeCenterX = originX;
+const cubeCenterY = originY + (N-1)*C;  // 3-face meeting point
+
+function drawBackground(){
+  // Deep background
+  ctx.fillStyle = '#060d28';
+  ctx.fillRect(0,0,W,H);
+
+  // Soft depth glow behind cube — like a light source
+  const bg = ctx.createRadialGradient(cubeCenterX, cubeCenterY, 0, cubeCenterX, cubeCenterY, cubeH*0.72);
+  bg.addColorStop(0,   'rgba(12, 30, 80, 0.85)');
+  bg.addColorStop(0.45,'rgba(8, 20, 58, 0.6)');
+  bg.addColorStop(1,   'rgba(0, 0, 0, 0)');
+  ctx.fillStyle = bg;
+  ctx.fillRect(0,0,W,H);
+
+  // Subtle shadow/depth plane below cube
+  const shadow = ctx.createRadialGradient(cubeCenterX, cubeCenterY+80, 0, cubeCenterX, cubeCenterY+80, 300);
+  shadow.addColorStop(0,   'rgba(0,0,0,0.35)');
+  shadow.addColorStop(1,   'rgba(0,0,0,0)');
+  ctx.fillStyle = shadow;
+  ctx.fillRect(0,0,W,H);
+}
+
 let start = null;
 function render(ts){
   if(!start) start = ts;
   const [cx,cy] = getCenter((ts-start) % CYCLE_MS);
-  ctx.clearRect(0,0,W,H);
+  drawBackground();
   for(const d of allDots) drawDot(d.sx,d.sy,dotRadius(d.sx,d.sy,cx,cy),d.face);
   requestAnimationFrame(render);
 }
