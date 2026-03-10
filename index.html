@@ -19,9 +19,8 @@ const W = canvas.width, H = canvas.height;
 
 // ── Isometric grid ─────────────────────────────────────
 const N = 8, C = 27;
-const PHI = 0.2; // ~11.5° backward-clockwise Y-rotation
-const R = [(Math.cos(PHI)-Math.sin(PHI))*Math.sqrt(3)/2*C, (Math.cos(PHI)+Math.sin(PHI))*C/2];
-const L = [-(Math.sin(PHI)+Math.cos(PHI))*Math.sqrt(3)/2*C, (Math.cos(PHI)-Math.sin(PHI))*C/2];
+const R = [ Math.sqrt(3)/2*C,  C/2 ];
+const L = [-Math.sqrt(3)/2*C,  C/2 ];
 
 const cubeH   = 2*(N-1)*C;
 const originY = H/2 - cubeH/2;
