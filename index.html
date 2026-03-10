@@ -18,9 +18,13 @@ const ctx = canvas.getContext('2d');
 const W = canvas.width, H = canvas.height;
 const cx = W/2, cy = H/2;
 
-const S = 200;   // half cube size
-const GRID = 8;  // dots per edge — more dots like KPMG
-const FOV = 420; // low FOV = dramatic perspective depth
+const S = 200;
+const GRID = 8;
+const FOV = 450;
+
+// Fixed viewing angle — cube does NOT rotate
+const ANGLE_X = 0.42;
+const ANGLE_Y = 0.65;
 
 function dot3(a,b){return a[0]*b[0]+a[1]*b[1]+a[2]*b[2];}
 function norm(v){const l=Math.sqrt(dot3(v,v));return l<1e-6?v:v.map(x=>x/l);}
@@ -34,34 +38,58 @@ const faceDefs = [
   { o:[-S, S, S], u:[2*S,0,0], v:[0,0,-2*S], n:[0, 1,0] },
 ];
 
-const allDots = [];
+function rotX(p,a){const[x,y,z]=p,c=Math.cos(a),s=Math.sin(a);return[x,y*c-z*s,y*s+z*c];}
+function rotY(p,a){const[x,y,z]=p,c=Math.cos(a),s=Math.sin(a);return[x*c+z*s,y,-x*s+z*c];}
+
+// Pre-compute all visible dots (cube is static)
+const visibleDots = [];
+const seen = new Map();
+
 faceDefs.forEach(face => {
+  let fn = [...face.n];
+  fn = rotX(fn, ANGLE_X); fn = rotY(fn, ANGLE_Y);
+  if (fn[2] <= 0.02) return; // backface cull
+
+  const diff = Math.max(0, dot3(fn, norm([-0.3,-0.7,0.65])));
+  const brightness = 0.4 + diff * 0.6;
+
   for (let i = 0; i < GRID; i++) {
     for (let j = 0; j < GRID; j++) {
       const ti = i/(GRID-1), tj = j/(GRID-1);
-      allDots.push({
-        pos: [
-          face.o[0]+face.u[0]*ti+face.v[0]*tj,
-          face.o[1]+face.u[1]*ti+face.v[1]*tj,
-          face.o[2]+face.u[2]*ti+face.v[2]*tj,
-        ],
-        faceN: [...face.n]
-      });
+      const pos = [
+        face.o[0]+face.u[0]*ti+face.v[0]*tj,
+        face.o[1]+face.u[1]*ti+face.v[1]*tj,
+        face.o[2]+face.u[2]*ti+face.v[2]*tj,
+      ];
+      let p = [...pos];
+      p = rotX(p, ANGLE_X); p = rotY(p, ANGLE_Y);
+
+      const camZ = p[2] + S*1.8;
+      const scale = FOV / (FOV + camZ);
+      const sx = cx + p[0]*scale;
+      const sy = cy + p[1]*scale;
+
+      // Depth factor: 0 = far back, 1 = closest
+      const depthT = Math.max(0, Math.min(1, 1 - camZ/(S*3.5)));
+
+      const key = pos.map(x=>Math.round(x)).join(',');
+      if (!seen.has(key) || p[2] > seen.get(key).pz) {
+        const dot = { sx, sy, z: p[2], depthT, brightness, pz: p[2],
+          // Wave phase: use 3D diagonal for a nice wave direction
+          phase: (p[0] + p[1] + p[2]) * 0.012 };
+        seen.set(key, dot);
+      }
     }
   }
 });
 
-function rotX(p,a){const[x,y,z]=p,c=Math.cos(a),s=Math.sin(a);return[x,y*c-z*s,y*s+z*c];}
-function rotY(p,a){const[x,y,z]=p,c=Math.cos(a),s=Math.sin(a);return[x*c+z*s,y,-x*s+z*c];}
+// Sort once (static)
+visibleDots.push(...[...seen.values()].sort((a,b) => a.z - b.z));
 
-function drawSphere(sx, sy, r, bright, isCenter){
-  if(r < 0.4) return;
-
-  // Blue palette like KPMG, pink/purple highlight at center
-  const hue = isCenter ? 260 : 220; // purple for bright, blue for dark
-  
+function drawSphere(sx, sy, r, bright, depthT){
+  if(r < 0.3) return;
   const g = ctx.createRadialGradient(sx-r*.35, sy-r*.4, r*.03, sx, sy, r);
-  if(isCenter){
+  if(depthT > 0.55){
     g.addColorStop(0,  `rgba(255,200,255,${bright})`);
     g.addColorStop(.2, `rgba(200,120,255,${bright})`);
     g.addColorStop(.5, `rgba(120,60,240,${bright})`);
@@ -74,8 +102,6 @@ function drawSphere(sx, sy, r, bright, isCenter){
   }
   ctx.beginPath(); ctx.arc(sx, sy, r, 0, Math.PI*2);
   ctx.fillStyle = g; ctx.fill();
-
-  // Specular highlight
   const h = ctx.createRadialGradient(sx-r*.3, sy-r*.38, 0, sx-r*.3, sy-r*.38, r*.5);
   h.addColorStop(0,  `rgba(255,255,255,${bright*.85})`);
   h.addColorStop(.4, `rgba(255,255,255,${bright*.2})`);
@@ -84,50 +110,22 @@ function drawSphere(sx, sy, r, bright, isCenter){
   ctx.fillStyle = h; ctx.fill();
 }
 
-let angleX = 0.38, angleY = 0.62, floatT = 0;
-let cubeFloatY = 0;
-const light = norm([-0.3, -0.7, 0.65]);
+let t = 0;
 
 function render(){
   ctx.clearRect(0, 0, W, H);
-  angleY += 0.016;
-  // angleX is fixed — no tumbling
-  floatT += 0.018;
-  cubeFloatY = Math.sin(floatT * 0.6) * 18;
+  t += 0.025;
 
-  const visible = new Map();
+  for (const d of visibleDots) {
+    // Wave: size pulses with phase offset per dot position
+    const wave = Math.sin(t + d.phase);
 
-  allDots.forEach(d => {
-    let n = [...d.faceN];
-    n = rotX(n, angleX); n = rotY(n, angleY);
-    if (n[2] <= 0.02) return;
+    // Base size from depth, animated by wave
+    const baseR = 2.5 + d.depthT * 18;
+    const r = baseR * (0.75 + 0.35 * wave);
 
-    let p = [...d.pos];
-    p = rotX(p, angleX); p = rotY(p, angleY);
-
-    // Dramatic perspective: closer = much bigger
-    const camZ = p[2] + S*1.8;
-    const scale = FOV / (FOV + camZ);
-    const sx = cx + p[0] * scale;
-    const sy = cy + cubeFloatY + p[1] * scale;
-
-    // Depth-based radius — dramatic like KPMG
-    const depthT = Math.max(0, Math.min(1, 1 - camZ / (S*3.5)));
-    const r = 2.5 + depthT * 20; // tiny at back, large at front
-
-    const diff = Math.max(0, dot3(n, light));
-    const bright = 0.4 + diff * 0.6;
-    const isCenter = depthT > 0.55; // purple/pink for closest dots
-
-    const key = d.pos.map(x=>Math.round(x)).join(',');
-    if (!visible.has(key) || p[2] > visible.get(key).pz) {
-      visible.set(key, { sx, sy, z: p[2], r, bright, isCenter, pz: p[2] });
-    }
-  });
-
-  [...visible.values()]
-    .sort((a,b) => a.z - b.z)
-    .forEach(d => drawSphere(d.sx, d.sy, d.r, d.bright, d.isCenter));
+    drawSphere(d.sx, d.sy, r, d.brightness, d.depthT);
+  }
 
   requestAnimationFrame(render);
 }
