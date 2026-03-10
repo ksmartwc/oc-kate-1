@@ -113,14 +113,14 @@ function drawBackground(){
   ctx.fillRect(0,0,W,H);
 
   // Horizontal ellipse gradient (darker center, glow ring)
-  const glowY  = cubeCenterY + cubeH * 0.4;
+  const glowY  = cubeCenterY + cubeH * 0.6;
   const rBase  = cubeH * 0.75;
   // Use scale transform to make it a wide horizontal ellipse
   ctx.save();
   ctx.translate(cubeCenterX, glowY);
   ctx.scale(2.2, 1.0);   // stretch 2.2x wider than tall
   const glow = ctx.createRadialGradient(0, 0, 0, 0, 0, rBase);
-  glow.addColorStop(0,    'rgba(5,  12,  40, 0.0)');   // dark center
+  glow.addColorStop(0,    'rgba(10, 26,  80, 0.35)');  // slightly darker center
   glow.addColorStop(0.25, 'rgba(18, 48, 140, 0.55)');  // glow ring
   glow.addColorStop(0.55, 'rgba(12, 30,  95, 0.35)');
   glow.addColorStop(0.85, 'rgba(5,  12,  50, 0.12)');
