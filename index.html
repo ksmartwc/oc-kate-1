@@ -75,23 +75,23 @@ function drawDot(sx,sy,r,face,glow){
   const b = BRIGHT[face] * (0.64 + 0.36 * glow); // small dots darker
   const w = glow; // 0=small/blue  1=big/green-center
 
-  // All dots: green + bit of blue base color
-  // Animated cluster (glow→1): fades to WHITE (light effect)
-  // Base dot color: green-blue  r=35 g=170 b=160
-  // Highlight white: r=255 g=255 b=255
-  const cR0 = Math.round(35  + w * (255 - 35));   // green-blue → white
-  const cG0 = Math.round(170 + w * (255 - 170));  // green     → white
-  const cB0 = Math.round(160 + w * (255 - 160));  // blue-green → white
+  // Small dots (glow=0): pure blue
+  // Big dots (glow=1): white highlight, green-blue transition
+  // Center: blue(55,120,255) → white(255,255,255)
+  const cR0 = Math.round(55  + w * (255 - 55));
+  const cG0 = Math.round(120 + w * (255 - 120));
+  const cB0 = Math.round(255);                     // stays 255
 
-  const cR1 = Math.round(30  + w * (200 - 30));   // mid ring
-  const cG1 = Math.round(150 + w * (220 - 150));
-  const cB1 = Math.round(140 + w * (220 - 140));
+  // mid: blue → green-blue
+  const cR1 = Math.round(40  + w * (30  - 40));
+  const cG1 = Math.round(100 + w * (180 - 100));  // 100→180 (green tint in mid)
+  const cB1 = Math.round(220 + w * (180 - 220));  // 220→180
 
   const g = ctx.createRadialGradient(sx-r*.32, sy-r*.36, r*.04, sx, sy, r);
-  g.addColorStop(0,    `rgba(${cR0},${cG0},${cB0},${b})`);    // white (peak) or green-blue
-  g.addColorStop(0.4,  `rgba(${cR1},${cG1},${cB1},${b})`);    // mid
-  g.addColorStop(0.75, `rgba(30,140,140,${b})`);               // green-blue outer
-  g.addColorStop(1,    `rgba(10,50,60,${b})`);                 // dark edge
+  g.addColorStop(0,    `rgba(${cR0},${cG0},${cB0},${b})`);    // white or blue center
+  g.addColorStop(0.4,  `rgba(${cR1},${cG1},${cB1},${b})`);    // blue→green-blue mid
+  g.addColorStop(0.75, `rgba(40,90,200,${b})`);                // blue outer
+  g.addColorStop(1,    `rgba(12,28,90,${b})`);                 // dark blue edge
   ctx.beginPath();ctx.arc(sx,sy,r,0,Math.PI*2);ctx.fillStyle=g;ctx.fill();
 
   // White specular highlight (light reflection spot, upper-left)
