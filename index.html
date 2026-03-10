@@ -18,44 +18,41 @@ const ctx = canvas.getContext('2d');
 const W = canvas.width, H = canvas.height;
 const cx = W/2, cy = H/2;
 
-const R = 240;   // sphere radius
-const N = 280;   // number of dots
+const R = 240;
+const N = 280;
 const FOV = 500;
+const WAVE_SPEED = 0.4;  // radians per second (how fast wave sweeps)
+const WAVE_WIDTH = 0.18; // sigma — width of the gaussian pulse (0-1 range)
 
-// Fibonacci sphere distribution — evenly spaced dots on sphere surface
+const golden = Math.PI * (3 - Math.sqrt(5));
 const dots = [];
-const golden = Math.PI * (3 - Math.sqrt(5)); // golden angle
 
 for (let i = 0; i < N; i++) {
-  const y = 1 - (i / (N - 1)) * 2;          // -1 to 1
-  const r = Math.sqrt(1 - y * y);
+  const y = 1 - (i / (N-1)) * 2;
+  const r = Math.sqrt(1 - y*y);
   const theta = golden * i;
   const x = Math.cos(theta) * r;
   const z = Math.sin(theta) * r;
 
-  const pos = [x * R, y * R, z * R];
+  const pos = [x*R, y*R, z*R];
+  const depthT = (z + 1) / 2; // 0=back, 1=front
 
-  // Depth factor: 0=back, 1=front (based on z)
-  const depthT = (z + 1) / 2;
+  // Wave phase: each dot's position along sweep direction (front→back = z axis)
+  // Normalize to 0–1 range
+  const phaseNorm = depthT; // front dots get hit first
 
-  // Wave phase based on 3D position diagonal
-  const phase = (x + y + z) * 3.5;
-
-  // Project to 2D
-  const camZ = pos[2] + R * 1.5;
+  const camZ = pos[2] + R*1.5;
   const scale = FOV / (FOV + camZ);
-  const sx = cx + pos[0] * scale;
-  const sy = cy + pos[1] * scale;
+  const sx = cx + pos[0]*scale;
+  const sy = cy + pos[1]*scale;
 
-  dots.push({ sx, sy, z: pos[2], depthT, phase, scale });
+  dots.push({ sx, sy, z: pos[2], depthT, phaseNorm });
 }
 
-// Sort back to front (static — sphere orientation doesn't change)
-dots.sort((a, b) => a.z - b.z);
+dots.sort((a,b) => a.z - b.z);
 
 function drawSphere(sx, sy, r, depthT){
   if(r < 0.3) return;
-
   const g = ctx.createRadialGradient(sx-r*.35, sy-r*.4, r*.03, sx, sy, r);
   if(depthT > 0.6){
     g.addColorStop(0,  `rgba(255,200,255,1)`);
@@ -72,14 +69,12 @@ function drawSphere(sx, sy, r, depthT){
     g.addColorStop(.4, `rgba(20,40,140,0.7)`);
     g.addColorStop(1,  `rgba(5,10,60,0.7)`);
   }
-
   ctx.beginPath(); ctx.arc(sx, sy, r, 0, Math.PI*2);
   ctx.fillStyle = g; ctx.fill();
 
-  // Specular
   const h = ctx.createRadialGradient(sx-r*.3, sy-r*.38, 0, sx-r*.3, sy-r*.38, r*.5);
-  h.addColorStop(0,  `rgba(255,255,255,${0.3 + depthT * 0.55})`);
-  h.addColorStop(.4, `rgba(255,255,255,${depthT * 0.15})`);
+  h.addColorStop(0,  `rgba(255,255,255,${0.3 + depthT*0.55})`);
+  h.addColorStop(.4, `rgba(255,255,255,${depthT*0.15})`);
   h.addColorStop(1,  'rgba(255,255,255,0)');
   ctx.beginPath(); ctx.arc(sx, sy, r, 0, Math.PI*2);
   ctx.fillStyle = h; ctx.fill();
@@ -89,13 +84,24 @@ let t = 0;
 
 function render(){
   ctx.clearRect(0, 0, W, H);
-  t += 0.022;
+  t += 0.016;
+
+  // Single wave position sweeping 0 → 1 → 0 → 1 ...
+  // Use sawtooth: wavePos goes 0→1 over period, then resets
+  const period = (Math.PI * 2) / WAVE_SPEED;
+  const wavePos = (t * WAVE_SPEED / (Math.PI * 2)) % 1;
 
   for (const d of dots) {
-    const wave = Math.sin(t + d.phase);
-    // Base size: front dots much bigger than back
-    const baseR = 2 + d.depthT * 20;
-    const r = baseR * (0.72 + 0.38 * wave);
+    let dist = Math.abs(d.phaseNorm - wavePos);
+    // Wrap around
+    dist = Math.min(dist, 1 - dist);
+
+    // Gaussian pulse — single crest
+    const pulse = Math.exp(-(dist * dist) / (2 * WAVE_WIDTH * WAVE_WIDTH));
+
+    const baseR = 2 + d.depthT * 18;
+    const r = baseR * (0.65 + 0.6 * pulse);
+
     drawSphere(d.sx, d.sy, r, d.depthT);
   }
 
