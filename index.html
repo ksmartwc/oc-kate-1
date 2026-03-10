@@ -30,46 +30,50 @@ const origin      = [originX, originY];
 const rightOrigin = [originX+(N-1)*R[0], originY+(N-1)*R[1]];
 const leftOrigin  = [originX+(N-1)*L[0], originY+(N-1)*L[1]];
 
-// ── Key path waypoints (screen coords) ───────────────────────
-// P0: front corner (center) — where all 3 faces meet
-const P0 = [originX,              originY + (N-1)*C];
-// P1: top apex — back-top corner
-const P1 = [originX,              originY];
-// P2: top-left corner of top face
-const P2 = [leftOrigin[0],        leftOrigin[1]];
-// P3: bottom-left corner (bottom of left face)
-const P3 = [leftOrigin[0],        leftOrigin[1] + (N-1)*C];
+// ── All 6 key corner points ───────────────────────────────────
+const CENTER       = [originX,              originY + (N-1)*C];   // front center (home)
+const TOP          = [originX,              originY];              // top apex
+const TOP_LEFT     = [leftOrigin[0],        leftOrigin[1]];        // top-left corner
+const TOP_RIGHT    = [rightOrigin[0],       rightOrigin[1]];       // top-right corner
+const BOT_LEFT     = [leftOrigin[0],        leftOrigin[1]+(N-1)*C];
+const BOT_RIGHT    = [rightOrigin[0],       rightOrigin[1]+(N-1)*C];
 
-// Closed loop: P0→P1→P2→P3→P0
-const PATH = [P0, P1, P2, P3, P0];
-const CYCLE = 5000; // ms per full loop
+// Sequence: center → corner → center → next corner → ...
+const CORNERS = [TOP, TOP_LEFT, BOT_LEFT, BOT_RIGHT, TOP_RIGHT];
 
-// ── Pre-compute all dot positions (static geometry) ──────────
-function topFaceDot(i,j)   { return [origin[0]+i*R[0]+j*L[0],    origin[1]+i*R[1]+j*L[1]]; }
-function rightFaceDot(j,k) { return [rightOrigin[0]+j*L[0],       rightOrigin[1]+j*L[1]+k*C]; }
-function leftFaceDot(i,k)  { return [leftOrigin[0]+i*R[0],        leftOrigin[1]+i*R[1]+k*C]; }
+// Full path: [center, corner1, center, corner2, center, ...]
+const PATH = [];
+for(const c of CORNERS){ PATH.push(CENTER); PATH.push(c); }
+PATH.push(CENTER); // close loop
 
-const allDots = [];
-const seen    = new Set();
+const SEG_MS  = 800;   // ms per segment (out or back)
+const PAUSE_MS= 250;   // brief pause at corner
+const CYCLE   = (SEG_MS*2 + PAUSE_MS) * CORNERS.length;
+
+// ── Geometry ─────────────────────────────────────────────────
+function topFaceDot(i,j)   { return [origin[0]+i*R[0]+j*L[0],     origin[1]+i*R[1]+j*L[1]]; }
+function rightFaceDot(j,k) { return [rightOrigin[0]+j*L[0],        rightOrigin[1]+j*L[1]+k*C]; }
+function leftFaceDot(i,k)  { return [leftOrigin[0]+i*R[0],         leftOrigin[1]+i*R[1]+k*C]; }
+
+const allDots = [], seen = new Set();
 function addDot(sx,sy,face,depth){
   const key=`${Math.round(sx)},${Math.round(sy)}`;
   if(seen.has(key))return; seen.add(key);
   allDots.push({sx,sy,face,depth});
 }
-for(let i=0;i<N;i++) for(let j=0;j<N;j++){ const[sx,sy]=topFaceDot(i,j);    addDot(sx,sy,'top',i+j); }
-for(let j=0;j<N;j++) for(let k=0;k<N;k++){ const[sx,sy]=rightFaceDot(j,k);  addDot(sx,sy,'right',(N-1-j)+k+(N-1)); }
-for(let i=0;i<N;i++) for(let k=0;k<N;k++){ const[sx,sy]=leftFaceDot(i,k);   addDot(sx,sy,'left',(N-1-i)+k+(N-1)); }
+for(let i=0;i<N;i++) for(let j=0;j<N;j++){ const[sx,sy]=topFaceDot(i,j);   addDot(sx,sy,'top',i+j); }
+for(let j=0;j<N;j++) for(let k=0;k<N;k++){ const[sx,sy]=rightFaceDot(j,k); addDot(sx,sy,'right',(N-1-j)+k+(N-1)); }
+for(let i=0;i<N;i++) for(let k=0;k<N;k++){ const[sx,sy]=leftFaceDot(i,k);  addDot(sx,sy,'left',(N-1-i)+k+(N-1)); }
 allDots.sort((a,b)=>a.depth-b.depth);
 
-// ── Dot size based on distance from moving center ────────────
+// ── Size / draw ───────────────────────────────────────────────
 const R_MAX=26, R_MIN=4;
 const MAX_D=(N-1)*Math.sqrt(3)/2*C*1.2;
 const SIGMA=MAX_D*0.42;
 
 function dotRadius(sx,sy,cx,cy){
-  const d=Math.hypot(sx-cx, sy-cy);
-  const t=Math.exp(-(d*d)/(2*SIGMA*SIGMA));
-  return R_MIN+(R_MAX-R_MIN)*t;
+  const d=Math.hypot(sx-cx,sy-cy);
+  return R_MIN+(R_MAX-R_MIN)*Math.exp(-(d*d)/(2*SIGMA*SIGMA));
 }
 
 const BRIGHT={top:1.0,left:0.68,right:0.52};
@@ -94,29 +98,35 @@ function drawDot(sx,sy,r,face){
   ctx.beginPath();ctx.arc(sx,sy,r,0,Math.PI*2);ctx.fillStyle=h;ctx.fill();
 }
 
-// ── Smooth step ──────────────────────────────────────────────
+// ── Animation: center → corner → center (with pause at corner) ─
 function smoothstep(t){ return t*t*(3-2*t); }
 
-function getCenter(ts){
-  // ts = 0..1 over full cycle, split evenly across 4 segments
-  const segs=PATH.length-1;
-  const seg=Math.min(segs-1, Math.floor(ts*segs));
-  const segT=smoothstep((ts*segs)-seg);
-  const a=PATH[seg], b=PATH[seg+1];
-  return [a[0]+(b[0]-a[0])*segT, a[1]+(b[1]-a[1])*segT];
+function getCenter(elapsed){
+  const segTotal = SEG_MS*2 + PAUSE_MS;
+  const ci = Math.floor(elapsed / segTotal) % CORNERS.length;
+  const within = elapsed % segTotal;
+  const corner = CORNERS[ci];
+
+  if(within < SEG_MS){
+    // Going out: center → corner
+    const t = smoothstep(within / SEG_MS);
+    return [CENTER[0]+(corner[0]-CENTER[0])*t, CENTER[1]+(corner[1]-CENTER[1])*t];
+  } else if(within < SEG_MS + PAUSE_MS){
+    // Pause at corner
+    return corner;
+  } else {
+    // Coming back: corner → center
+    const t = smoothstep((within - SEG_MS - PAUSE_MS) / SEG_MS);
+    return [corner[0]+(CENTER[0]-corner[0])*t, corner[1]+(CENTER[1]-corner[1])*t];
+  }
 }
 
-// ── Render loop ───────────────────────────────────────────────
 let start=null;
 function render(ts){
   if(!start) start=ts;
-  const elapsed=(ts-start)%CYCLE;
-  const [cx,cy]=getCenter(elapsed/CYCLE);
-
+  const[cx,cy]=getCenter((ts-start)%CYCLE);
   ctx.clearRect(0,0,W,H);
-  for(const d of allDots){
-    drawDot(d.sx,d.sy,dotRadius(d.sx,d.sy,cx,cy),d.face);
-  }
+  for(const d of allDots) drawDot(d.sx,d.sy,dotRadius(d.sx,d.sy,cx,cy),d.face);
   requestAnimationFrame(render);
 }
 requestAnimationFrame(render);
