@@ -75,24 +75,23 @@ function drawDot(sx,sy,r,face,glow){
   const b = BRIGHT[face] * (0.64 + 0.36 * glow); // small dots darker
   const w = glow; // 0=small/blue  1=big/green-center
 
-  // All dots: green tint; big dots: vivid green center → blue-green edge
-  // Base (small): r=45 g=160 b=230 (blue-green tint always visible)
-  // Peak (big):   r=30 g=240 b=90  (vivid green center)
-  const cR0 = Math.round(45  + w * (30  - 45));   // 45→30
-  const cG0 = Math.round(160 + w * (240 - 160));  // 160→240 (vivid green at peak)
-  const cB0 = Math.round(230 + w * (90  - 230));  // 230→90  (drop blue = green)
+  // All dots: green + bit of blue base color
+  // Animated cluster (glow→1): fades to WHITE (light effect)
+  // Base dot color: green-blue  r=35 g=170 b=160
+  // Highlight white: r=255 g=255 b=255
+  const cR0 = Math.round(35  + w * (255 - 35));   // green-blue → white
+  const cG0 = Math.round(170 + w * (255 - 170));  // green     → white
+  const cB0 = Math.round(160 + w * (255 - 160));  // blue-green → white
 
-  // mid ring
-  const cR1 = Math.round(40  + w * (30  - 40));
-  const cG1 = Math.round(140 + w * (180 - 140));  // 140→180
-  const cB1 = Math.round(220 + w * (160 - 220));  // 220→160
+  const cR1 = Math.round(30  + w * (200 - 30));   // mid ring
+  const cG1 = Math.round(150 + w * (220 - 150));
+  const cB1 = Math.round(140 + w * (220 - 140));
 
-  // outer: blue-green base
   const g = ctx.createRadialGradient(sx-r*.32, sy-r*.36, r*.04, sx, sy, r);
-  g.addColorStop(0,    `rgba(${cR0},${cG0},${cB0},${b})`);    // green center
-  g.addColorStop(0.4,  `rgba(${cR1},${cG1},${cB1},${b})`);    // blue-green mid
-  g.addColorStop(0.75, `rgba(40,130,220,${b})`);               // blue-green outer
-  g.addColorStop(1,    `rgba(12,30,100,${b})`);                // dark edge
+  g.addColorStop(0,    `rgba(${cR0},${cG0},${cB0},${b})`);    // white (peak) or green-blue
+  g.addColorStop(0.4,  `rgba(${cR1},${cG1},${cB1},${b})`);    // mid
+  g.addColorStop(0.75, `rgba(30,140,140,${b})`);               // green-blue outer
+  g.addColorStop(1,    `rgba(10,50,60,${b})`);                 // dark edge
   ctx.beginPath();ctx.arc(sx,sy,r,0,Math.PI*2);ctx.fillStyle=g;ctx.fill();
 
   // White specular highlight (light reflection spot, upper-left)
