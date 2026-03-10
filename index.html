@@ -18,114 +18,109 @@ const ctx = canvas.getContext('2d');
 const W = canvas.width, H = canvas.height;
 const cx = W/2, cy = H/2;
 
-const S = 200;
-const GRID = 7;
-const FOV = 1800;
-const DOT_R = 10; // uniform dot size in 3D space
+// ── Cube geometry ────────────────────────────────────────────
+const S    = 220;    // half-side
+const GRID = 8;      // dots per edge (inclusive)
+// True isometric: Y-rotation 45°, X-rotation atan(1/sqrt(2))≈35.26°
+const AY   =  Math.PI / 4;
+const AX   = -Math.atan(1 / Math.sqrt(2)); // ≈ -0.6155 rad
 
-const AX = -0.52;
-const AY = Math.PI / 4;
+// Very high FOV → near-orthographic so each face looks flat (like KPMG)
+const CAM_DIST = 2600;
+const DOT_R    = 11.5; // world-space radius
 
-function dot3(a,b){return a[0]*b[0]+a[1]*b[1]+a[2]*b[2];}
-function norm(v){const l=Math.sqrt(dot3(v,v));return l<1e-6?v:v.map(x=>x/l);}
-function rotX(p,a){const[x,y,z]=p,c=Math.cos(a),s=Math.sin(a);return[x,y*c-z*s,y*s+z*c];}
-function rotY(p,a){const[x,y,z]=p,c=Math.cos(a),s=Math.sin(a);return[x*c+z*s,y,-x*s+z*c];}
+function rotX([x,y,z], a){ const c=Math.cos(a),s=Math.sin(a); return [x, y*c-z*s, y*s+z*c]; }
+function rotY([x,y,z], a){ const c=Math.cos(a),s=Math.sin(a); return [x*c+z*s, y, -x*s+z*c]; }
+function dot3(a,b){ return a[0]*b[0]+a[1]*b[1]+a[2]*b[2]; }
+function norm(v){ const l=Math.hypot(...v); return l<1e-9?v:v.map(x=>x/l); }
 
-const faceDefs = [
-  { o:[-S,-S, S], u:[2*S,0,0], v:[0,2*S,0], n:[0,0, 1] },
-  { o:[ S,-S,-S], u:[-2*S,0,0], v:[0,2*S,0], n:[0,0,-1] },
-  { o:[-S,-S,-S], u:[0,0,2*S], v:[0,2*S,0], n:[-1,0,0] },
-  { o:[ S,-S, S], u:[0,0,-2*S], v:[0,2*S,0], n:[1,0, 0] },
-  { o:[-S,-S,-S], u:[2*S,0,0], v:[0,0,2*S], n:[0,-1,0] },
-  { o:[-S, S, S], u:[2*S,0,0], v:[0,0,-2*S], n:[0, 1,0] },
+// 6 faces: origin + u-vector + v-vector + outward normal
+const FACES = [
+  { o:[-S,-S, S], u:[2*S,0,0],   v:[0,2*S,0],   n:[0, 0, 1] }, // front
+  { o:[ S,-S,-S], u:[-2*S,0,0],  v:[0,2*S,0],   n:[0, 0,-1] }, // back
+  { o:[-S,-S,-S], u:[0,0,2*S],   v:[0,2*S,0],   n:[-1,0, 0] }, // left
+  { o:[ S,-S, S], u:[0,0,-2*S],  v:[0,2*S,0],   n:[1, 0, 0] }, // right
+  { o:[-S,-S,-S], u:[2*S,0,0],   v:[0,0,2*S],   n:[0,-1, 0] }, // top
+  { o:[-S, S, S], u:[2*S,0,0],   v:[0,0,-2*S],  n:[0, 1, 0] }, // bottom
 ];
 
-const light = norm([-0.4,-0.8,0.5]);
-const seen = new Map();
+const KEY_ROUND = 1; // round to 1px for deduplication
 
-faceDefs.forEach(face => {
-  let fn = [...face.n];
-  fn = rotX(fn, AX); fn = rotY(fn, AY);
-  if(fn[2] <= 0) return;
+const best = new Map(); // key → dot
 
-  const diff = Math.max(0, dot3(fn, light));
-  const faceBright = 0.45 + diff * 0.55;
+FACES.forEach(face => {
+  // Backface cull
+  let fn = rotX(face.n, AX); fn = rotY(fn, AY);
+  if (fn[2] <= 0) return;
 
-  for(let i=0; i<GRID; i++){
-    for(let j=0; j<GRID; j++){
-      const ti=i/(GRID-1), tj=j/(GRID-1);
-      const pos=[
-        face.o[0]+face.u[0]*ti+face.v[0]*tj,
-        face.o[1]+face.u[1]*ti+face.v[1]*tj,
-        face.o[2]+face.u[2]*ti+face.v[2]*tj,
+  // Face brightness (Lambertian light from upper-left-front)
+  const light = norm([-0.5, -0.9, 0.6]);
+  const diff   = Math.max(0, dot3(fn, light));
+  const fBright = 0.50 + diff * 0.50;
+
+  for (let i = 0; i < GRID; i++) {
+    for (let j = 0; j < GRID; j++) {
+      const ti = i/(GRID-1), tj = j/(GRID-1);
+      const world = [
+        face.o[0] + face.u[0]*ti + face.v[0]*tj,
+        face.o[1] + face.u[1]*ti + face.v[1]*tj,
+        face.o[2] + face.u[2]*ti + face.v[2]*tj,
       ];
-      let p=[...pos];
-      p=rotX(p,AX); p=rotY(p,AY);
 
-      const scale=FOV/(FOV+p[2]+600);
-      const sx=cx+p[0]*scale;
-      const sy=cy+p[1]*scale;
-      const r=DOT_R*scale; // natural perspective scale only — keeps faces flat
+      // Rotate
+      let p = rotX(world, AX);
+      p = rotY(p, AY);
 
-      // Wave phase: use depth position
-      const depthNorm=Math.max(0,Math.min(1,(p[2]+S*1.8)/(S*3.5)));
+      // Project (perspective — near-ortho at this CAM_DIST)
+      const scale = CAM_DIST / (CAM_DIST + p[2]);
+      const sx = cx + p[0] * scale;
+      const sy = cy + p[1] * scale;
+      const r  = DOT_R * scale;
 
-      const key=pos.map(x=>Math.round(x)).join(',');
-      if(!seen.has(key)||p[2]>seen.get(key).pz){
-        seen.set(key,{sx,sy,z:p[2],r,depthNorm,faceBright,pz:p[2]});
+      const key = world.map(x => Math.round(x/KEY_ROUND)*KEY_ROUND).join(',');
+      if (!best.has(key) || p[2] > best.get(key).pz) {
+        best.set(key, { sx, sy, z: p[2], r, bright: fBright, pz: p[2] });
       }
     }
   }
 });
 
-const dots=[...seen.values()].sort((a,b)=>a.z-b.z);
+const dots = [...best.values()].sort((a,b) => a.z - b.z);
 
-function drawDot(sx,sy,r,alpha,depthNorm){
-  if(r<0.3||alpha<0.05)return;
-  ctx.globalAlpha=alpha;
-  const g=ctx.createRadialGradient(sx-r*.3,sy-r*.35,r*.03,sx,sy,r);
-  if(depthNorm>0.65){
-    g.addColorStop(0, 'rgba(220,180,255,1)');
-    g.addColorStop(.3,'rgba(150,90,255,1)');
-    g.addColorStop(.7,'rgba(70,30,200,1)');
-    g.addColorStop(1, 'rgba(15,5,60,1)');
-  } else {
-    g.addColorStop(0, 'rgba(130,200,255,1)');
-    g.addColorStop(.3,'rgba(40,120,255,1)');
-    g.addColorStop(.7,'rgba(10,45,190,1)');
-    g.addColorStop(1, 'rgba(3,8,55,1)');
-  }
-  ctx.beginPath();ctx.arc(sx,sy,r,0,Math.PI*2);
-  ctx.fillStyle=g;ctx.fill();
-  const h=ctx.createRadialGradient(sx-r*.28,sy-r*.33,0,sx-r*.28,sy-r*.33,r*.44);
-  h.addColorStop(0,'rgba(255,255,255,0.7)');
-  h.addColorStop(.4,'rgba(255,255,255,0.12)');
-  h.addColorStop(1,'rgba(255,255,255,0)');
-  ctx.beginPath();ctx.arc(sx,sy,r,0,Math.PI*2);
-  ctx.fillStyle=h;ctx.fill();
-  ctx.globalAlpha=1;
+// Depth range for color tinting
+const minZ = Math.min(...dots.map(d=>d.z));
+const maxZ = Math.max(...dots.map(d=>d.z));
+
+function drawDot(sx, sy, r, bright, depthT){
+  // Color: all blue; slightly lighter/cyan for front, deeper blue at back
+  // Matches KPMG: consistent blue palette, no purple
+  const fr = Math.round(30  + depthT * 90);   // 30–120
+  const fg = Math.round(90  + depthT * 110);  // 90–200
+  const fb = Math.round(200 + depthT * 55);   // 200–255
+
+  const g = ctx.createRadialGradient(sx-r*.32, sy-r*.36, r*.04, sx, sy, r);
+  g.addColorStop(0,   `rgba(${fr+120},${fg+40},${fb},${bright})`);
+  g.addColorStop(0.3, `rgba(${fr+60}, ${fg+10},${fb},${bright})`);
+  g.addColorStop(0.65,`rgba(${fr},    ${fg},   ${fb},${bright})`);
+  g.addColorStop(1,   `rgba(${Math.round(fr*.3)},${Math.round(fg*.3)},${Math.round(fb*.5)},${bright})`);
+
+  ctx.beginPath(); ctx.arc(sx, sy, r, 0, Math.PI*2);
+  ctx.fillStyle = g; ctx.fill();
+
+  // Specular highlight
+  const h = ctx.createRadialGradient(sx-r*.28, sy-r*.34, 0, sx-r*.28, sy-r*.34, r*.48);
+  h.addColorStop(0,   `rgba(255,255,255,${bright * 0.75})`);
+  h.addColorStop(0.4, `rgba(255,255,255,${bright * 0.12})`);
+  h.addColorStop(1,   'rgba(255,255,255,0)');
+  ctx.beginPath(); ctx.arc(sx, sy, r, 0, Math.PI*2);
+  ctx.fillStyle = h; ctx.fill();
 }
 
-let t=0;
-const WAVE_W=0.14;
-
-function render(){
-  ctx.clearRect(0,0,W,H);
-  t+=0.013;
-  const wavePos=(t*0.32)%1;
-
-  for(const d of dots){
-    let dist=Math.abs(d.depthNorm-wavePos);
-    dist=Math.min(dist,1-dist);
-    const pulse=Math.exp(-(dist*dist)/(2*WAVE_W*WAVE_W));
-
-    // Wave changes BRIGHTNESS only — dots stay same size
-    const alpha=d.faceBright*(0.6+0.4*pulse);
-    drawDot(d.sx,d.sy,d.r,alpha,d.depthNorm);
-  }
-  requestAnimationFrame(render);
+// Draw once — static
+for (const d of dots) {
+  const depthT = (d.z - minZ) / (maxZ - minZ); // 0=back, 1=front
+  drawDot(d.sx, d.sy, d.r, d.bright, depthT);
 }
-render();
 </script>
 </body>
 </html>
