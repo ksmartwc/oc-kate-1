@@ -75,24 +75,24 @@ function drawDot(sx,sy,r,face,glow){
   const b = BRIGHT[face] * (0.64 + 0.36 * glow); // small dots darker
   const w = glow; // 0=small/blue  1=big/green-center
 
-  // Big dots: vivid green center → blue edge + white specular spot
-  // Small dots: blue throughout
-  // Interpolate center color: small=blue(55,120,255) → big=green(40,220,120)
-  const cR0 = Math.round(55  + w * (40  - 55));   // 55→40
-  const cG0 = Math.round(120 + w * (220 - 120));  // 120→220 (strong green)
-  const cB0 = Math.round(255 + w * (120 - 255));  // 255→120 (less blue = more green)
+  // All dots: green tint; big dots: vivid green center → blue-green edge
+  // Base (small): r=45 g=160 b=230 (blue-green tint always visible)
+  // Peak (big):   r=30 g=240 b=90  (vivid green center)
+  const cR0 = Math.round(45  + w * (30  - 45));   // 45→30
+  const cG0 = Math.round(160 + w * (240 - 160));  // 160→240 (vivid green at peak)
+  const cB0 = Math.round(230 + w * (90  - 230));  // 230→90  (drop blue = green)
 
-  // mid ring: blue-green
-  const cR1 = Math.round(55  + w * (30  - 55));   // 55→30
-  const cG1 = Math.round(120 + w * (140 - 120));  // 120→140
-  const cB1 = Math.round(255 + w * (200 - 255));  // 255→200
+  // mid ring
+  const cR1 = Math.round(40  + w * (30  - 40));
+  const cG1 = Math.round(140 + w * (180 - 140));  // 140→180
+  const cB1 = Math.round(220 + w * (160 - 220));  // 220→160
 
-  // outer: always blue
+  // outer: blue-green base
   const g = ctx.createRadialGradient(sx-r*.32, sy-r*.36, r*.04, sx, sy, r);
   g.addColorStop(0,    `rgba(${cR0},${cG0},${cB0},${b})`);    // green center
   g.addColorStop(0.4,  `rgba(${cR1},${cG1},${cB1},${b})`);    // blue-green mid
-  g.addColorStop(0.75, `rgba(55,120,255,${b})`);               // blue outer
-  g.addColorStop(1,    `rgba(16,36,115,${b})`);                // dark blue edge
+  g.addColorStop(0.75, `rgba(40,130,220,${b})`);               // blue-green outer
+  g.addColorStop(1,    `rgba(12,30,100,${b})`);                // dark edge
   ctx.beginPath();ctx.arc(sx,sy,r,0,Math.PI*2);ctx.fillStyle=g;ctx.fill();
 
   // White specular highlight (light reflection spot, upper-left)
