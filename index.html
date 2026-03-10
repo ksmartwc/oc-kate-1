@@ -20,15 +20,17 @@ const cx = W/2, cy = H/2;
 
 const S = 180;   // half cube size
 const GRID = 6;  // dots per edge
-const DOT_R = 13;
 const FOV = 900;
 
-function sub(a,b){return[a[0]-b[0],a[1]-b[1],a[2]-b[2]];}
+// Depth-based size: front dot radius vs back dot radius
+const DOT_R_FRONT = 16;
+const DOT_R_BACK  = 8;
+
 function dot(a,b){return a[0]*b[0]+a[1]*b[1]+a[2]*b[2];}
 function norm(v){const l=Math.sqrt(dot(v,v));return l<1e-6?v:v.map(x=>x/l);}
 function lerp(a,b,t){return a.map((x,i)=>x+(b[i]-x)*t);}
 
-// 6 cube faces: [origin, uDir, vDir, normal]
+// 6 cube faces
 const faceDefs = [
   { o:[-S,-S, S], u:[2*S,0,0], v:[0,2*S,0], n:[0,0, 1] }, // front
   { o:[ S,-S,-S], u:[-2*S,0,0], v:[0,2*S,0], n:[0,0,-1] }, // back
@@ -38,79 +40,88 @@ const faceDefs = [
   { o:[-S, S, S], u:[2*S,0,0], v:[0,0,-2*S], n:[0, 1,0] }, // bottom
 ];
 
-// Generate dots with deduplication + averaged normals for shared edges
-const dotMap = new Map();
+// Generate all face dots (keep edge dots per-face, dedupe for rendering)
+const allDots = [];
 faceDefs.forEach(face => {
   for (let i = 0; i < GRID; i++) {
     for (let j = 0; j < GRID; j++) {
       const ti = i/(GRID-1), tj = j/(GRID-1);
-      const pos = [
-        face.o[0] + face.u[0]*ti + face.v[0]*tj,
-        face.o[1] + face.u[1]*ti + face.v[1]*tj,
-        face.o[2] + face.u[2]*ti + face.v[2]*tj,
-      ];
-      const key = pos.map(x=>Math.round(x)).join(',');
-      if (dotMap.has(key)) {
-        const d = dotMap.get(key);
-        d.n = norm(d.n.map((v,k) => v + face.n[k]));
-        d.shared = true;
-      } else {
-        dotMap.set(key, { pos, n: [...face.n], shared: false });
-      }
+      allDots.push({
+        pos: [
+          face.o[0]+face.u[0]*ti+face.v[0]*tj,
+          face.o[1]+face.u[1]*ti+face.v[1]*tj,
+          face.o[2]+face.u[2]*ti+face.v[2]*tj,
+        ],
+        faceN: [...face.n]
+      });
     }
   }
 });
-const dots = [...dotMap.values()];
 
 function rotX(p,a){const[x,y,z]=p,c=Math.cos(a),s=Math.sin(a);return[x,y*c-z*s,y*s+z*c];}
 function rotY(p,a){const[x,y,z]=p,c=Math.cos(a),s=Math.sin(a);return[x*c+z*s,y,-x*s+z*c];}
-function proj(p){const sc=FOV/(FOV+p[2]+400);return[cx+p[0]*sc,cy+p[1]*sc,p[2],sc];}
 
-function drawSphere(sx,sy,r,bright,alpha){
-  if(r<0.8||alpha<0.03)return;
-  ctx.globalAlpha=Math.min(1,alpha);
-  const g=ctx.createRadialGradient(sx-r*.35,sy-r*.38,r*.04,sx,sy,r);
-  g.addColorStop(0, `rgba(235,215,255,${bright})`);
-  g.addColorStop(.3,`rgba(158,88,248,${bright})`);
-  g.addColorStop(.7,`rgba(88,28,180,${bright})`);
-  g.addColorStop(1, `rgba(18,4,55,${bright})`);
-  ctx.beginPath();ctx.arc(sx,sy,r,0,Math.PI*2);
-  ctx.fillStyle=g;ctx.fill();
-  const h=ctx.createRadialGradient(sx-r*.3,sy-r*.38,0,sx-r*.3,sy-r*.38,r*.48);
-  h.addColorStop(0,`rgba(255,255,255,${bright*.75})`);
-  h.addColorStop(.5,`rgba(255,255,255,${bright*.14})`);
-  h.addColorStop(1,'rgba(255,255,255,0)');
-  ctx.beginPath();ctx.arc(sx,sy,r,0,Math.PI*2);
-  ctx.fillStyle=h;ctx.fill();
-  ctx.globalAlpha=1;
+function drawSphere(sx, sy, r, bright){
+  if(r < 0.5) return;
+  const g = ctx.createRadialGradient(sx-r*.35, sy-r*.38, r*.04, sx, sy, r);
+  g.addColorStop(0,  `rgba(235,215,255,${bright})`);
+  g.addColorStop(.3, `rgba(158,88,248,${bright})`);
+  g.addColorStop(.7, `rgba(88,28,180,${bright})`);
+  g.addColorStop(1,  `rgba(18,4,55,${bright})`);
+  ctx.beginPath(); ctx.arc(sx, sy, r, 0, Math.PI*2);
+  ctx.fillStyle = g; ctx.fill();
+  // specular
+  const h = ctx.createRadialGradient(sx-r*.3, sy-r*.38, 0, sx-r*.3, sy-r*.38, r*.48);
+  h.addColorStop(0,  `rgba(255,255,255,${bright*.78})`);
+  h.addColorStop(.5, `rgba(255,255,255,${bright*.15})`);
+  h.addColorStop(1,  'rgba(255,255,255,0)');
+  ctx.beginPath(); ctx.arc(sx, sy, r, 0, Math.PI*2);
+  ctx.fillStyle = h; ctx.fill();
 }
 
-let angleX=0.4, angleY=0.6, floatT=0;
-const light=norm([-0.35,-0.75,0.65]);
+let angleX = 0.4, angleY = 0.6, floatT = 0;
+const light = norm([-0.35, -0.75, 0.65]);
 
 function render(){
-  ctx.clearRect(0,0,W,H);
-  angleY+=0.009;
-  angleX+=0.003;
-  floatT+=0.018;
-  const fy=Math.sin(floatT*.6)*16;
+  ctx.clearRect(0, 0, W, H);
+  angleY += 0.009;
+  angleX += 0.0025;
+  floatT += 0.018;
+  const fy = Math.sin(floatT * 0.6) * 16;
 
-  const tr=dots.map(d=>{
-    let p=[d.pos[0],d.pos[1]+fy,d.pos[2]];
-    let n=[...d.n];
-    p=rotX(p,angleX);p=rotY(p,angleY);
-    n=rotX(n,angleX);n=rotY(n,angleY);
-    const facing=n[2];
-    const fadeRange=d.shared?0.55:0.35;
-    const alpha=Math.min(1,Math.max(0,(facing+0.18)/fadeRange));
-    const diff=Math.max(0,dot(n,light));
-    const bright=0.55+diff*0.45;
-    const[sx,sy,z,sc]=proj(p);
-    return{sx,sy,z,r:DOT_R*sc,bright,alpha};
+  // Collect visible dots — hard culling per face normal
+  const visible = new Map(); // key → best dot (closest face)
+  
+  allDots.forEach(d => {
+    let n = [...d.faceN];
+    n = rotX(n, angleX); n = rotY(n, angleY);
+    if (n[2] <= 0) return; // hard cull back faces
+
+    let p = [d.pos[0], d.pos[1]+fy, d.pos[2]];
+    p = rotX(p, angleX); p = rotY(p, angleY);
+
+    const scale = FOV/(FOV + p[2] + 400);
+    const sx = cx + p[0]*scale;
+    const sy = cy + p[1]*scale;
+
+    // Depth-based radius: map p[2] range to DOT_R
+    // p[2] ranges roughly from -S to +S after rotation
+    const depthT = Math.max(0, Math.min(1, (p[2] + S*1.5) / (S*3)));
+    const r = DOT_R_BACK + (DOT_R_FRONT - DOT_R_BACK) * depthT;
+
+    const diff = Math.max(0, dot(n, light));
+    const bright = 0.5 + diff * 0.5;
+
+    const key = d.pos.map(x=>Math.round(x)).join(',');
+    if (!visible.has(key) || p[2] > visible.get(key).pz) {
+      visible.set(key, { sx, sy, z: p[2], r, bright, pz: p[2] });
+    }
   });
 
-  tr.sort((a,b)=>a.z-b.z);
-  for(const d of tr)drawSphere(d.sx,d.sy,d.r,d.bright,d.alpha);
+  // Sort back to front, draw
+  const drawList = [...visible.values()].sort((a,b) => a.z - b.z);
+  for (const d of drawList) drawSphere(d.sx, d.sy, d.r, d.bright);
+
   requestAnimationFrame(render);
 }
 render();
