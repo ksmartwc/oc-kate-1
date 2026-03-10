@@ -72,20 +72,33 @@ function glowFactor(sx,sy,cx,cy){
 const BRIGHT={top:1.0, left:0.60, right:0.38};
 
 function drawDot(sx,sy,r,face,glow){
-  const b=BRIGHT[face] * (0.64 + 0.36 * glow); // small dots 40% darker total (2x -20%)
-  const warmT=glow; // 0=base blue, 1=bright highlight
-  const fr=Math.round(55+warmT*65);
-  const fg=Math.round(120+warmT*132); // +20% more green (was 110)
-  const fb=Math.round(255-warmT*36);  // +20% more blue drop = more green tint
-  const g=ctx.createRadialGradient(sx-r*.32,sy-r*.36,r*.04,sx,sy,r);
-  g.addColorStop(0,   `rgba(${Math.min(255,fr+100)},${Math.min(255,fg+50)},${fb},${b})`);
-  g.addColorStop(0.35,`rgba(${fr+40},${fg+15},${fb},${b})`);
-  g.addColorStop(0.7, `rgba(${fr},${fg},${fb},${b})`);
-  g.addColorStop(1,   `rgba(${Math.round(fr*.3)},${Math.round(fg*.3)},${Math.round(fb*.45)},${b})`);
+  const b = BRIGHT[face] * (0.64 + 0.36 * glow); // small dots darker
+  const w = glow; // 0=small/blue  1=big/green-center
+
+  // Big dots: vivid green center → blue edge + white specular spot
+  // Small dots: blue throughout
+  // Interpolate center color: small=blue(55,120,255) → big=green(40,220,120)
+  const cR0 = Math.round(55  + w * (40  - 55));   // 55→40
+  const cG0 = Math.round(120 + w * (220 - 120));  // 120→220 (strong green)
+  const cB0 = Math.round(255 + w * (120 - 255));  // 255→120 (less blue = more green)
+
+  // mid ring: blue-green
+  const cR1 = Math.round(55  + w * (30  - 55));   // 55→30
+  const cG1 = Math.round(120 + w * (140 - 120));  // 120→140
+  const cB1 = Math.round(255 + w * (200 - 255));  // 255→200
+
+  // outer: always blue
+  const g = ctx.createRadialGradient(sx-r*.32, sy-r*.36, r*.04, sx, sy, r);
+  g.addColorStop(0,    `rgba(${cR0},${cG0},${cB0},${b})`);    // green center
+  g.addColorStop(0.4,  `rgba(${cR1},${cG1},${cB1},${b})`);    // blue-green mid
+  g.addColorStop(0.75, `rgba(55,120,255,${b})`);               // blue outer
+  g.addColorStop(1,    `rgba(16,36,115,${b})`);                // dark blue edge
   ctx.beginPath();ctx.arc(sx,sy,r,0,Math.PI*2);ctx.fillStyle=g;ctx.fill();
-  const h=ctx.createRadialGradient(sx-r*.28,sy-r*.34,0,sx-r*.28,sy-r*.34,r*.46);
-  h.addColorStop(0,  `rgba(255,255,255,${b*.72})`);
-  h.addColorStop(.4, `rgba(255,255,255,${b*.1})`);
+
+  // White specular highlight (light reflection spot, upper-left)
+  const h = ctx.createRadialGradient(sx-r*.28,sy-r*.34,0,sx-r*.28,sy-r*.34,r*.44);
+  h.addColorStop(0,  `rgba(255,255,255,${b*.80})`);
+  h.addColorStop(.3, `rgba(255,255,255,${b*.12})`);
   h.addColorStop(1,  'rgba(255,255,255,0)');
   ctx.beginPath();ctx.arc(sx,sy,r,0,Math.PI*2);ctx.fillStyle=h;ctx.fill();
 }
