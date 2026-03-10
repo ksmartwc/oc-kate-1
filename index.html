@@ -41,7 +41,7 @@ const BOT_LEFT  = [leftOrigin[0],  leftOrigin[1]+(N-1)*C];
 const TOP_LEFT  = [leftOrigin[0],  leftOrigin[1]];
 
 // Path: center → all 6 corners in order → back to center
-const PATH = [CENTER, TOP, TOP_LEFT, BOT_LEFT, BOT_FRONT, BOT_RIGHT, TOP_RIGHT, CENTER]; // CCW
+const PATH = [CENTER, TOP, TOP_RIGHT, BOT_RIGHT, BOT_FRONT, BOT_LEFT, CENTER]; // CW, no left side
 const CYCLE_MS = 11000; // slower
 
 // ── Build all dots ─────────────────────────────────────
