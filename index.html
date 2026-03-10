@@ -16,110 +16,113 @@
 const canvas = document.getElementById('c');
 const ctx = canvas.getContext('2d');
 const W = canvas.width, H = canvas.height;
-const cx = W/2, cy = H/2;
 
-// ── Cube geometry ────────────────────────────────────────────
-const S    = 220;    // half-side
-const GRID = 8;      // dots per edge (inclusive)
-// True isometric: Y-rotation 45°, X-rotation atan(1/sqrt(2))≈35.26°
-const AY   =  Math.PI / 4;
-const AX   = -Math.atan(1 / Math.sqrt(2)); // ≈ -0.6155 rad
+// ── Pure isometric layout ────────────────────────────────────
+const N = 8;      // dots per edge (inclusive)
+const C = 46;     // cell size in px
 
-// Very high FOV → near-orthographic so each face looks flat (like KPMG)
-const CAM_DIST = 2600;
-const DOT_R    = 11.5; // world-space radius
+// 3 isometric axis step vectors (screen-space)
+const R = [ Math.sqrt(3)/2 * C,  C/2 ];  // "right"  axis
+const L = [-Math.sqrt(3)/2 * C,  C/2 ];  // "left"   axis
+const D = [ 0,                   C   ];  // "down"   axis (along cube sides)
 
-function rotX([x,y,z], a){ const c=Math.cos(a),s=Math.sin(a); return [x, y*c-z*s, y*s+z*c]; }
-function rotY([x,y,z], a){ const c=Math.cos(a),s=Math.sin(a); return [x*c+z*s, y, -x*s+z*c]; }
-function dot3(a,b){ return a[0]*b[0]+a[1]*b[1]+a[2]*b[2]; }
-function norm(v){ const l=Math.hypot(...v); return l<1e-9?v:v.map(x=>x/l); }
+// Top-back corner of cube (topmost point on screen)
+const cubeTopY = H/2 - ((N-1)*C/2 + (N-1)*C) / 2 - 20;
+const origin   = [W/2, cubeTopY];   // back corner of top face
 
-// 6 faces: origin + u-vector + v-vector + outward normal
-const FACES = [
-  { o:[-S,-S, S], u:[2*S,0,0],   v:[0,2*S,0],   n:[0, 0, 1] }, // front
-  { o:[ S,-S,-S], u:[-2*S,0,0],  v:[0,2*S,0],   n:[0, 0,-1] }, // back
-  { o:[-S,-S,-S], u:[0,0,2*S],   v:[0,2*S,0],   n:[-1,0, 0] }, // left
-  { o:[ S,-S, S], u:[0,0,-2*S],  v:[0,2*S,0],   n:[1, 0, 0] }, // right
-  { o:[-S,-S,-S], u:[2*S,0,0],   v:[0,0,2*S],   n:[0,-1, 0] }, // top
-  { o:[-S, S, S], u:[2*S,0,0],   v:[0,0,-2*S],  n:[0, 1, 0] }, // bottom
-];
-
-const KEY_ROUND = 1; // round to 1px for deduplication
-
-const best = new Map(); // key → dot
-
-FACES.forEach(face => {
-  // Backface cull
-  let fn = rotX(face.n, AX); fn = rotY(fn, AY);
-  if (fn[2] <= 0) return;
-
-  // Face brightness (Lambertian light from upper-left-front)
-  const light = norm([-0.5, -0.9, 0.6]);
-  const diff   = Math.max(0, dot3(fn, light));
-  const fBright = 0.50 + diff * 0.50;
-
-  for (let i = 0; i < GRID; i++) {
-    for (let j = 0; j < GRID; j++) {
-      const ti = i/(GRID-1), tj = j/(GRID-1);
-      const world = [
-        face.o[0] + face.u[0]*ti + face.v[0]*tj,
-        face.o[1] + face.u[1]*ti + face.v[1]*tj,
-        face.o[2] + face.u[2]*ti + face.v[2]*tj,
-      ];
-
-      // Rotate
-      let p = rotX(world, AX);
-      p = rotY(p, AY);
-
-      // Project (perspective — near-ortho at this CAM_DIST)
-      const scale = CAM_DIST / (CAM_DIST + p[2]);
-      const sx = cx + p[0] * scale;
-      const sy = cy + p[1] * scale;
-      const r  = DOT_R * scale;
-
-      const key = world.map(x => Math.round(x/KEY_ROUND)*KEY_ROUND).join(',');
-      if (!best.has(key) || p[2] > best.get(key).pz) {
-        best.set(key, { sx, sy, z: p[2], r, bright: fBright, pz: p[2] });
-      }
-    }
-  }
-});
-
-const dots = [...best.values()].sort((a,b) => a.z - b.z);
-
-// Depth range for color tinting
-const minZ = Math.min(...dots.map(d=>d.z));
-const maxZ = Math.max(...dots.map(d=>d.z));
-
-function drawDot(sx, sy, r, bright, depthT){
-  // Color: all blue; slightly lighter/cyan for front, deeper blue at back
-  // Matches KPMG: consistent blue palette, no purple
-  const fr = Math.round(30  + depthT * 90);   // 30–120
-  const fg = Math.round(90  + depthT * 110);  // 90–200
-  const fb = Math.round(200 + depthT * 55);   // 200–255
-
-  const g = ctx.createRadialGradient(sx-r*.32, sy-r*.36, r*.04, sx, sy, r);
-  g.addColorStop(0,   `rgba(${fr+120},${fg+40},${fb},${bright})`);
-  g.addColorStop(0.3, `rgba(${fr+60}, ${fg+10},${fb},${bright})`);
-  g.addColorStop(0.65,`rgba(${fr},    ${fg},   ${fb},${bright})`);
-  g.addColorStop(1,   `rgba(${Math.round(fr*.3)},${Math.round(fg*.3)},${Math.round(fb*.5)},${bright})`);
-
-  ctx.beginPath(); ctx.arc(sx, sy, r, 0, Math.PI*2);
-  ctx.fillStyle = g; ctx.fill();
-
-  // Specular highlight
-  const h = ctx.createRadialGradient(sx-r*.28, sy-r*.34, 0, sx-r*.28, sy-r*.34, r*.48);
-  h.addColorStop(0,   `rgba(255,255,255,${bright * 0.75})`);
-  h.addColorStop(0.4, `rgba(255,255,255,${bright * 0.12})`);
-  h.addColorStop(1,   'rgba(255,255,255,0)');
-  ctx.beginPath(); ctx.arc(sx, sy, r, 0, Math.PI*2);
-  ctx.fillStyle = h; ctx.fill();
+// Compute dot screen position for top face point (i along R, j along L)
+function topFaceDot(i, j){
+  return [origin[0] + i*R[0] + j*L[0],
+          origin[1] + i*R[1] + j*L[1]];
 }
 
-// Draw once — static
-for (const d of dots) {
-  const depthT = (d.z - minZ) / (maxZ - minZ); // 0=back, 1=front
-  drawDot(d.sx, d.sy, d.r, d.bright, depthT);
+// Right face origin = right corner of top face
+const rightOrigin = [origin[0]+(N-1)*R[0], origin[1]+(N-1)*R[1]];
+// Compute dot for right face (j along L = depth, k along D = height)
+function rightFaceDot(j, k){
+  return [rightOrigin[0] + j*L[0],
+          rightOrigin[1] + j*L[1] + k*D[1]];
+}
+
+// Left face origin = left corner of top face
+const leftOrigin  = [origin[0]+(N-1)*L[0], origin[1]+(N-1)*L[1]];
+// Compute dot for left face (i along R = depth, k along D = height)
+function leftFaceDot(i, k){
+  return [leftOrigin[0] + i*R[0],
+          leftOrigin[1] + i*R[1] + k*D[1]];
+}
+
+// ── Collect all dots ─────────────────────────────────────────
+const allDots = [];
+const seenKey = new Set();
+
+function addDot(sx, sy, face, depth){
+  const key = `${Math.round(sx)},${Math.round(sy)}`;
+  if(seenKey.has(key)) return;
+  seenKey.add(key);
+  allDots.push({sx, sy, face, depth});
+}
+
+// Top face — back row first (depth = i+j, low = far)
+for(let i=0;i<N;i++) for(let j=0;j<N;j++){
+  const [sx,sy] = topFaceDot(i,j);
+  addDot(sx, sy, 'top', i+j);
+}
+// Right face — far depth first
+for(let j=0;j<N;j++) for(let k=0;k<N;k++){
+  const [sx,sy] = rightFaceDot(j,k);
+  addDot(sx, sy, 'right', (N-1-j) + k + (N-1));
+}
+// Left face — far depth first
+for(let i=0;i<N;i++) for(let k=0;k<N;k++){
+  const [sx,sy] = leftFaceDot(i,k);
+  addDot(sx, sy, 'left', (N-1-i) + k + (N-1));
+}
+
+// Sort back-to-front
+allDots.sort((a,b) => a.depth - b.depth);
+
+// ── Draw ─────────────────────────────────────────────────────
+const DOT_R = 9.5;
+
+// Face brightness (light from upper-left)
+const FACE_BRIGHT = { top: 1.0, left: 0.72, right: 0.55 };
+
+// Color per face: top=cyan-blue, left=mid-blue, right=deep-blue
+function faceColor(face, t){ // t=0..1 depth within face
+  if(face==='top')   return { r:80+t*60,  g:160+t*60, b:255 };
+  if(face==='left')  return { r:30+t*40,  g:90+t*50,  b:220+t*30 };
+                     return { r:20+t*30,  g:60+t*40,  b:190+t*40 }; // right
+}
+
+function drawDot(sx, sy, r, face, localT){
+  const b = FACE_BRIGHT[face];
+  const {r:fr,g:fg,b:fb} = faceColor(face, localT);
+
+  // Body gradient
+  const g = ctx.createRadialGradient(sx-r*.32, sy-r*.36, r*.04, sx, sy, r);
+  g.addColorStop(0,   `rgba(${Math.min(255,fr+110)},${Math.min(255,fg+50)},${fb},${b})`);
+  g.addColorStop(0.35,`rgba(${fr+40},${fg+15},${fb},${b})`);
+  g.addColorStop(0.7, `rgba(${fr},${fg},${fb},${b})`);
+  g.addColorStop(1,   `rgba(${Math.round(fr*.25)},${Math.round(fg*.25)},${Math.round(fb*.5)},${b})`);
+  ctx.beginPath(); ctx.arc(sx,sy,r,0,Math.PI*2);
+  ctx.fillStyle=g; ctx.fill();
+
+  // Specular
+  const h = ctx.createRadialGradient(sx-r*.28,sy-r*.34,0,sx-r*.28,sy-r*.34,r*.46);
+  h.addColorStop(0,  `rgba(255,255,255,${b*.72})`);
+  h.addColorStop(.4, `rgba(255,255,255,${b*.10})`);
+  h.addColorStop(1,  'rgba(255,255,255,0)');
+  ctx.beginPath(); ctx.arc(sx,sy,r,0,Math.PI*2);
+  ctx.fillStyle=h; ctx.fill();
+}
+
+ctx.clearRect(0,0,W,H);
+
+const maxD = allDots.reduce((m,d)=>Math.max(m,d.depth),0);
+for(const d of allDots){
+  const t = d.depth / maxD;
+  drawDot(d.sx, d.sy, DOT_R, d.face, t);
 }
 </script>
 </body>
