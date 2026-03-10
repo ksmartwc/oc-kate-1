@@ -159,10 +159,21 @@ function drawFloorShadows(cx, cy){
   }
 }
 
+// ── Mouse tracking ────────────────────────────────────
+let mouseX = null, mouseY = null;
+canvas.addEventListener('mousemove', e => {
+  const rect = canvas.getBoundingClientRect();
+  mouseX = (e.clientX - rect.left) * (W / rect.width);
+  mouseY = (e.clientY - rect.top)  * (H / rect.height);
+});
+canvas.addEventListener('mouseleave', () => { mouseX = null; mouseY = null; });
+
 let start = null;
 function render(ts){
   if(!start) start = ts;
-  const [cx,cy] = getCenter((ts-start) % CYCLE_MS);
+  const [cx,cy] = (mouseX !== null)
+    ? [mouseX, mouseY]
+    : getCenter((ts-start) % CYCLE_MS);
   drawBackground();
   for(const d of allDots){
     const glow = glowFactor(d.sx,d.sy,cx,cy);
