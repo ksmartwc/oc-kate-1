@@ -22,14 +22,15 @@ const PHI = 0.12;
 const R = [(Math.cos(PHI)-Math.sin(PHI))*Math.sqrt(3)/2*C, (Math.cos(PHI)+Math.sin(PHI))*C/2];
 const L = [-(Math.sin(PHI)+Math.cos(PHI))*Math.sqrt(3)/2*C, (Math.cos(PHI)-Math.sin(PHI))*C/2];
 
-const pyrH = 2*(N-1)*C;
+const V = 0.84; // slightly shorter pyramid
+const pyrH = 2*(N-1)*C*V;
 const originX = W/2;
-const originY = H/2 - pyrH/2 + 10;
+const originY = H/2 - pyrH/2 + 18;
 
 const APEX  = [originX, originY];
-const LEFT  = [originX + (N-1)*L[0], originY + (N-1)*L[1] + (N-1)*C];
-const RIGHT = [originX + (N-1)*R[0], originY + (N-1)*R[1] + (N-1)*C];
-const FRONT = [originX, originY + 2*(N-1)*C];
+const LEFT  = [originX + (N-1)*L[0], originY + ((N-1)*L[1] + (N-1)*C) * V];
+const RIGHT = [originX + (N-1)*R[0], originY + ((N-1)*R[1] + (N-1)*C) * V];
+const FRONT = [originX, originY + 2*(N-1)*C*V];
 
 const PATH = [APEX, RIGHT, FRONT, LEFT, APEX];
 const CYCLE_MS = 11000;
@@ -64,7 +65,7 @@ function addTriFace(p0, p1, p2, face){
   }
 }
 
-addTriFace(APEX, LEFT, RIGHT, 'top');
+// Only visible outer faces — no internal/back layer
 addTriFace(APEX, LEFT, FRONT, 'left');
 addTriFace(APEX, RIGHT, FRONT, 'right');
 allDots.sort((a,b) => a.depth - b.depth);
