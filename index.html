@@ -56,8 +56,8 @@ function addDot(sx,sy,face,depth){
   allDots.push({sx,sy,face,depth});
 }
 for(let i=0;i<N;i++) for(let j=0;j<N;j++){ const[sx,sy]=topFaceDot(i,j);   addDot(sx,sy,'top',i+j); }
-for(let j=0;j<N;j++) for(let k=0;k<N;k++){ const[sx,sy]=rightFaceDot(j,k); addDot(sx,sy,'right',(N-1-j)+k+(N-1)); }
-for(let i=0;i<N;i++) for(let k=0;k<N;k++){ const[sx,sy]=leftFaceDot(i,k);  addDot(sx,sy,'left',(N-1-i)+k+(N-1)); }
+for(let j=0;j<N;j++) for(let k=0;k<N;k++){ const[sx,sy]=rightFaceDot(j,k); addDot(sx,sy,'right',j+k+(N-1)); }
+for(let i=0;i<N;i++) for(let k=0;k<N;k++){ const[sx,sy]=leftFaceDot(i,k);  addDot(sx,sy,'left',i+k+(N-1)); }
 allDots.sort((a,b)=>a.depth-b.depth);
 
 // ── Dot sizing ────────────────────────────────────────
