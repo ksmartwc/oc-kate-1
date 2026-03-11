@@ -55,9 +55,11 @@ function addDot(sx,sy,face,depth){
   if(seen.has(key))return; seen.add(key);
   allDots.push({sx,sy,face,depth});
 }
-for(let i=0;i<N;i++) for(let j=0;j<N;j++){ const[sx,sy]=topFaceDot(i,j);   addDot(sx,sy,'top',sy); }
-for(let j=0;j<N;j++) for(let k=0;k<N;k++){ const[sx,sy]=rightFaceDot(j,k); addDot(sx,sy,'right',sy); }
-for(let i=0;i<N;i++) for(let k=0;k<N;k++){ const[sx,sy]=leftFaceDot(i,k);  addDot(sx,sy,'left',sy); }
+// Center front edge x — dots closer to this line get depth priority
+const cex = originX + (N-1)*(R[0]+L[0]);
+for(let i=0;i<N;i++) for(let j=0;j<N;j++){ const[sx,sy]=topFaceDot(i,j);   addDot(sx,sy,'top',  sy-Math.abs(sx-cex)*0.8); }
+for(let j=0;j<N;j++) for(let k=0;k<N;k++){ const[sx,sy]=rightFaceDot(j,k); addDot(sx,sy,'right',sy-Math.abs(sx-cex)*0.8); }
+for(let i=0;i<N;i++) for(let k=0;k<N;k++){ const[sx,sy]=leftFaceDot(i,k);  addDot(sx,sy,'left', sy-Math.abs(sx-cex)*0.8); }
 allDots.sort((a,b)=>a.depth-b.depth);
 
 // ── Dot sizing ────────────────────────────────────────
