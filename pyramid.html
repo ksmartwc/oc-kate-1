@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dot Pyramid</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #060d28; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<canvas id="c" width="800" height="800"></canvas>
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+
+const N = 8, C = 27;
+const PHI = 0.12;
+const R = [(Math.cos(PHI)-Math.sin(PHI))*Math.sqrt(3)/2*C, (Math.cos(PHI)+Math.sin(PHI))*C/2];
+const L = [-(Math.sin(PHI)+Math.cos(PHI))*Math.sqrt(3)/2*C, (Math.cos(PHI)-Math.sin(PHI))*C/2];
+
+const pyrH = 2*(N-1)*C;
+const originX = W/2;
+const originY = H/2 - pyrH/2 + 10;
+
+const APEX  = [originX, originY];
+const LEFT  = [originX + (N-1)*L[0], originY + (N-1)*L[1] + (N-1)*C];
+const RIGHT = [originX + (N-1)*R[0], originY + (N-1)*R[1] + (N-1)*C];
+const FRONT = [originX, originY + 2*(N-1)*C];
+
+const PATH = [APEX, RIGHT, FRONT, LEFT, APEX];
+const CYCLE_MS = 11000;
+const DOT_R = 3.5;
+const SIGMA = (N-1)*Math.sqrt(3)/2*C*0.65;
+const BRIGHT = { top: 1.0, left: 0.60, right: 0.38 };
+
+function lerp(a, b, t){ return [a[0] + (b[0]-a[0]) * t, a[1] + (b[1]-a[1]) * t]; }
+
+const allDots = [];
+const seen = new Set();
+function addDot(sx, sy, face, depth){
+  const key = `${Math.round(sx)},${Math.round(sy)}`;
+  if (seen.has(key)) return;
+  seen.add(key);
+  allDots.push({ sx, sy, face, depth });
+}
+
+function addTriFace(p0, p1, p2, face){
+  for(let row = 0; row < N; row++){
+    const t = row / (N - 1);
+    const a = lerp(p0, p1, t);
+    const b = lerp(p0, p2, t);
+    const cols = row + 1;
+    for(let col = 0; col < cols; col++){
+      const u = cols === 1 ? 0.5 : col / (cols - 1);
+      const sx = a[0] + (b[0] - a[0]) * u;
+      const sy = a[1] + (b[1] - a[1]) * u;
+      const depth = sy - Math.abs(sx - FRONT[0]) * 0.8;
+      addDot(sx, sy, face, depth);
+    }
+  }
+}
+
+addTriFace(APEX, LEFT, RIGHT, 'top');
+addTriFace(APEX, LEFT, FRONT, 'left');
+addTriFace(APEX, RIGHT, FRONT, 'right');
+allDots.sort((a,b) => a.depth - b.depth);
+
+function glowFactor(sx,sy,cx,cy){
+  const d = Math.hypot(sx-cx, sy-cy);
+  return Math.exp(-(d*d)/(2*SIGMA*SIGMA));
+}
+
+function drawDot(sx,sy,r,face,glow){
+  const effB = BRIGHT[face] * (1 - glow) + 0.90 * glow;
+  const b = effB * (0.64 + 0.36 * glow);
+  const w = glow;
+
+  const cR0 = Math.round(55  + w * (255 - 55));
+  const cG0 = Math.round(120 + w * (255 - 120));
+  const cB0 = 255;
+
+  const cR1 = Math.round(40  + w * (150 - 40));
+  const cG1 = Math.round(100 + w * (20  - 100));
+  const cB1 = 210;
+
+  const g = ctx.createRadialGradient(sx-r*.32, sy-r*.36, r*.04, sx, sy, r);
+  g.addColorStop(0,    `rgba(${cR0},${cG0},${cB0},${b})`);
+  g.addColorStop(0.4,  `rgba(${cR1},${cG1},${cB1},${b})`);
+  g.addColorStop(0.75, `rgba(40,90,200,${b})`);
+  g.addColorStop(1,    `rgba(12,28,90,${b})`);
+  ctx.beginPath(); ctx.arc(sx, sy, r, 0, Math.PI * 2); ctx.fillStyle = g; ctx.fill();
+
+  const h = ctx.createRadialGradient(sx-r*.28, sy-r*.34, 0, sx-r*.28, sy-r*.34, r*.44);
+  h.addColorStop(0,  `rgba(255,255,255,${b*.80})`);
+  h.addColorStop(.3, `rgba(255,255,255,${b*.12})`);
+  h.addColorStop(1,  'rgba(255,255,255,0)');
+  ctx.beginPath(); ctx.arc(sx, sy, r, 0, Math.PI * 2); ctx.fillStyle = h; ctx.fill();
+}
+
+function getCenter(elapsed){
+  const segs = PATH.length - 1;
+  const pos = (elapsed / CYCLE_MS) * segs;
+  const seg = Math.min(segs - 1, Math.floor(pos));
+  const t = pos - seg;
+  const a = PATH[seg], b = PATH[seg + 1];
+  return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+}
+
+function drawBackground(cx, cy){
+  ctx.fillStyle = '#060d28';
+  ctx.fillRect(0, 0, W, H);
+  if(cx !== undefined){
+    const mg = ctx.createRadialGradient(cx, cy, 0, cx, cy, pyrH * 0.55);
+    mg.addColorStop(0,   'rgba(90, 30, 160, 0.30)');
+    mg.addColorStop(0.4, 'rgba(50, 20, 120, 0.18)');
+    mg.addColorStop(1,   'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = mg;
+    ctx.fillRect(0, 0, W, H);
+  }
+}
+
+let mouseX = null, mouseY = null;
+canvas.addEventListener('mousemove', e => {
+  const rect = canvas.getBoundingClientRect();
+  mouseX = (e.clientX - rect.left) * (W / rect.width);
+  mouseY = (e.clientY - rect.top) * (H / rect.height);
+});
+canvas.addEventListener('mouseleave', () => { mouseX = null; mouseY = null; });
+
+let start = null;
+function render(ts){
+  if(!start) start = ts;
+  const [cx, cy] = (mouseX !== null) ? [mouseX, mouseY] : getCenter((ts - start) % CYCLE_MS);
+  drawBackground(cx, cy);
+  for(const d of allDots){
+    const glow = glowFactor(d.sx, d.sy, cx, cy);
+    const r = DOT_R + 10.7 * glow;
+    drawDot(d.sx, d.sy, r, d.face, glow);
+  }
+  requestAnimationFrame(render);
+}
+requestAnimationFrame(render);
+</script>
+</body>
+</html>
