@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Axiom — AI Data Intelligence</title>
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --navy:   #060d28;
+    --blue:   #4d8fff;
+    --purple: #8b5cf6;
+    --white:  #ffffff;
+    --dim:    rgba(255,255,255,0.45);
+    --faint:  rgba(255,255,255,0.07);
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--navy);
+    color: var(--white);
+    font-family: -apple-system, 'Inter', 'Segoe UI', sans-serif;
+    overflow-x: hidden;
+  }
+
+  /* ── NAV ─────────────────────────────────────── */
+  nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    height: 68px;
+    display: flex;
+    align-items: center;
+    padding: 0 80px;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--faint);
+    background: rgba(6,13,40,0.85);
+    backdrop-filter: blur(12px);
+  }
+
+  .logo {
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    color: var(--white);
+  }
+  .logo span { color: var(--blue); }
+
+  .nav-links {
+    display: flex;
+    gap: 40px;
+    list-style: none;
+  }
+  .nav-links a {
+    color: var(--dim);
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+    transition: color 0.2s;
+  }
+  .nav-links a:hover { color: var(--white); }
+
+  .nav-cta {
+    background: var(--blue);
+    color: var(--white);
+    border: none;
+    padding: 10px 22px;
+    border-radius: 7px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    letter-spacing: 0.2px;
+    transition: opacity 0.2s;
+  }
+  .nav-cta:hover { opacity: 0.85; }
+
+  /* ── HERO ─────────────────────────────────────── */
+  .hero {
+    min-height: 100vh;
+    padding-top: 68px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    align-items: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .hero-left {
+    padding: 80px 60px 80px 80px;
+    position: relative;
+    z-index: 2;
+  }
+
+  .hero-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(77,143,255,0.12);
+    border: 1px solid rgba(77,143,255,0.30);
+    color: var(--blue);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    padding: 7px 16px;
+    border-radius: 20px;
+    margin-bottom: 32px;
+  }
+  .hero-tag::before {
+    content: '';
+    width: 6px; height: 6px;
+    background: var(--blue);
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.8); }
+  }
+
+  h1 {
+    font-size: 58px;
+    font-weight: 800;
+    line-height: 1.08;
+    letter-spacing: -2px;
+    margin-bottom: 28px;
+  }
+
+  h1 .accent {
+    background: linear-gradient(135deg, #4d8fff 0%, #a78bff 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .hero-sub {
+    font-size: 18px;
+    line-height: 1.7;
+    color: var(--dim);
+    max-width: 440px;
+    margin-bottom: 44px;
+  }
+
+  .hero-actions {
+    display: flex;
+    gap: 14px;
+    align-items: center;
+    margin-bottom: 56px;
+  }
+
+  .btn-primary {
+    background: var(--blue);
+    color: var(--white);
+    border: none;
+    padding: 14px 28px;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.15s, opacity 0.15s;
+  }
+  .btn-primary:hover { transform: translateY(-1px); opacity: 0.9; }
+
+  .btn-ghost {
+    background: transparent;
+    color: var(--dim);
+    border: 1px solid rgba(255,255,255,0.13);
+    padding: 14px 24px;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: color 0.2s, border-color 0.2s;
+  }
+  .btn-ghost:hover { color: var(--white); border-color: rgba(255,255,255,0.3); }
+
+  .play-icon {
+    width: 18px; height: 18px;
+    background: var(--blue);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 8px;
+    padding-left: 1px;
+  }
+
+  .hero-stats {
+    display: flex;
+    gap: 0;
+    padding-top: 32px;
+    border-top: 1px solid var(--faint);
+  }
+
+  .stat {
+    padding-right: 40px;
+    margin-right: 40px;
+    border-right: 1px solid var(--faint);
+  }
+  .stat:last-child { border-right: none; }
+
+  .stat-val {
+    font-size: 30px;
+    font-weight: 800;
+    letter-spacing: -1px;
+    color: var(--white);
+  }
+
+  .stat-val span { color: var(--blue); }
+
+  .stat-label {
+    font-size: 12px;
+    color: var(--dim);
+    margin-top: 4px;
+    letter-spacing: 0.3px;
+  }
+
+  /* ── HERO RIGHT (cube) ────────────────────────── */
+  .hero-right {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    min-height: calc(100vh - 68px);
+  }
+
+  .cube-wrap {
+    position: relative;
+    width: 620px;
+    height: 620px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  #cube-canvas {
+    display: block;
+    position: relative;
+    z-index: 2;
+  }
+
+  /* ── LOGOS / SOCIAL PROOF ─────────────────────── */
+  .logos-bar {
+    padding: 28px 80px;
+    border-top: 1px solid var(--faint);
+    border-bottom: 1px solid var(--faint);
+    display: flex;
+    align-items: center;
+    gap: 0;
+  }
+
+  .logos-label {
+    font-size: 12px;
+    color: var(--dim);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    white-space: nowrap;
+    margin-right: 48px;
+    font-weight: 500;
+  }
+
+  .logos-list {
+    display: flex;
+    gap: 56px;
+    align-items: center;
+    flex: 1;
+  }
+
+  .logo-item {
+    font-size: 15px;
+    font-weight: 700;
+    color: rgba(255,255,255,0.22);
+    letter-spacing: -0.3px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  /* ── FEATURES ─────────────────────────────────── */
+  .features {
+    padding: 120px 80px;
+  }
+
+  .section-tag {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--blue);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+
+  .section-title {
+    font-size: 42px;
+    font-weight: 800;
+    letter-spacing: -1.5px;
+    line-height: 1.15;
+    margin-bottom: 16px;
+    max-width: 560px;
+  }
+
+  .section-sub {
+    font-size: 17px;
+    color: var(--dim);
+    line-height: 1.7;
+    max-width: 520px;
+    margin-bottom: 72px;
+  }
+
+  .features-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2px;
+  }
+
+  .feature-card {
+    background: rgba(255,255,255,0.025);
+    border: 1px solid var(--faint);
+    padding: 40px 36px;
+    transition: background 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .feature-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(77,143,255,0.4), transparent);
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  .feature-card:hover::before { opacity: 1; }
+  .feature-card:hover { background: rgba(77,143,255,0.04); }
+
+  .feature-icon {
+    width: 48px; height: 48px;
+    background: rgba(77,143,255,0.12);
+    border: 1px solid rgba(77,143,255,0.2);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    margin-bottom: 24px;
+  }
+
+  .feature-title {
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 12px;
+    letter-spacing: -0.3px;
+  }
+
+  .feature-desc {
+    font-size: 14px;
+    color: var(--dim);
+    line-height: 1.7;
+  }
+
+  /* ── CTA SECTION ──────────────────────────────── */
+  .cta-section {
+    margin: 0 80px 120px;
+    background: linear-gradient(135deg, rgba(77,143,255,0.10) 0%, rgba(139,92,246,0.10) 100%);
+    border: 1px solid rgba(77,143,255,0.2);
+    border-radius: 20px;
+    padding: 72px 80px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 40px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .cta-section::before {
+    content: '';
+    position: absolute;
+    top: -100px; right: -100px;
+    width: 400px; height: 400px;
+    background: radial-gradient(circle, rgba(77,143,255,0.12) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .cta-left h2 {
+    font-size: 36px;
+    font-weight: 800;
+    letter-spacing: -1px;
+    margin-bottom: 12px;
+    line-height: 1.2;
+  }
+
+  .cta-left p {
+    font-size: 16px;
+    color: var(--dim);
+    max-width: 420px;
+    line-height: 1.6;
+  }
+
+  .cta-right {
+    display: flex;
+    gap: 12px;
+    flex-shrink: 0;
+  }
+
+  /* ── FOOTER ───────────────────────────────────── */
+  footer {
+    padding: 32px 80px;
+    border-top: 1px solid var(--faint);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .footer-logo {
+    font-size: 18px;
+    font-weight: 800;
+    color: rgba(255,255,255,0.4);
+    letter-spacing: -0.5px;
+  }
+  .footer-logo span { color: rgba(77,143,255,0.5); }
+
+  .footer-copy {
+    font-size: 13px;
+    color: rgba(255,255,255,0.2);
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="logo">axi<span>om</span></div>
+  <ul class="nav-links">
+    <li><a href="#">Platform</a></li>
+    <li><a href="#">Solutions</a></li>
+    <li><a href="#">Pricing</a></li>
+    <li><a href="#">Docs</a></li>
+    <li><a href="#">Company</a></li>
+  </ul>
+  <button class="nav-cta">Get Started</button>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-left">
+    <div class="hero-tag">Now in Public Beta</div>
+    <h1>Intelligence that<br>scales with<br><span class="accent">your data</span></h1>
+    <p class="hero-sub">Axiom transforms raw data streams into actionable insight — in real time. Built for teams who move fast and demand clarity at every layer.</p>
+    <div class="hero-actions">
+      <button class="btn-primary">Start for free</button>
+      <button class="btn-ghost">
+        <span class="play-icon">▶</span>
+        Watch demo
+      </button>
+    </div>
+    <div class="hero-stats">
+      <div class="stat">
+        <div class="stat-val">2.4<span>B+</span></div>
+        <div class="stat-label">Events processed daily</div>
+      </div>
+      <div class="stat">
+        <div class="stat-val">99<span>.99%</span></div>
+        <div class="stat-label">Uptime SLA</div>
+      </div>
+      <div class="stat">
+        <div class="stat-val">12<span>ms</span></div>
+        <div class="stat-label">Avg. query latency</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="hero-right">
+    <div class="cube-wrap">
+      <canvas id="cube-canvas" width="620" height="620"></canvas>
+    </div>
+  </div>
+</section>
+
+<!-- SOCIAL PROOF -->
+<div class="logos-bar">
+  <span class="logos-label">Trusted by</span>
+  <div class="logos-list">
+    <span class="logo-item">Stripe</span>
+    <span class="logo-item">Vercel</span>
+    <span class="logo-item">Linear</span>
+    <span class="logo-item">Notion</span>
+    <span class="logo-item">Figma</span>
+    <span class="logo-item">Loom</span>
+  </div>
+</div>
+
+<!-- FEATURES -->
+<section class="features">
+  <div class="section-tag">Why Axiom</div>
+  <h2 class="section-title">Built for the speed of modern data</h2>
+  <p class="section-sub">From ingestion to visualization — everything your team needs to understand what's happening, right now.</p>
+
+  <div class="features-grid">
+    <div class="feature-card">
+      <div class="feature-icon">⚡</div>
+      <div class="feature-title">Real-time Ingestion</div>
+      <p class="feature-desc">Ingest millions of events per second without batching delays. Your data is queryable the moment it arrives.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🔍</div>
+      <div class="feature-title">Instant Query</div>
+      <p class="feature-desc">Run complex analytical queries across terabytes of data in milliseconds. No pre-aggregation required.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🤖</div>
+      <div class="feature-title">AI Anomaly Detection</div>
+      <p class="feature-desc">ML models continuously monitor your streams and surface anomalies before they become incidents.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">📊</div>
+      <div class="feature-title">Live Dashboards</div>
+      <p class="feature-desc">Build dashboards that update in real time. Share with stakeholders — no export needed, ever.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🔗</div>
+      <div class="feature-title">Universal Connectors</div>
+      <p class="feature-desc">Connect any data source in minutes — Kafka, Postgres, REST APIs, webhooks, and 100+ more.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🛡️</div>
+      <div class="feature-title">Enterprise Security</div>
+      <p class="feature-desc">SOC 2 Type II certified. Fine-grained RBAC, audit logs, SSO, and data residency controls built in.</p>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<div class="cta-section">
+  <div class="cta-left">
+    <h2>Ready to see your data differently?</h2>
+    <p>Join thousands of engineers and analysts already using Axiom to make sense of their data in real time.</p>
+  </div>
+  <div class="cta-right">
+    <button class="btn-ghost">Talk to sales</button>
+    <button class="btn-primary">Start free trial →</button>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-logo">axi<span>om</span></div>
+  <div class="footer-copy">© 2026 Axiom Technologies, Inc. All rights reserved.</div>
+</footer>
+
+<!-- CUBE ANIMATION -->
+<script>
+const canvas = document.getElementById('cube-canvas');
+const ctx = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+
+const N = 8, C = 24;
+const PHI = 0.12;
+const R = [(Math.cos(PHI)-Math.sin(PHI))*Math.sqrt(3)/2*C, (Math.cos(PHI)+Math.sin(PHI))*C/2];
+const L = [-(Math.sin(PHI)+Math.cos(PHI))*Math.sqrt(3)/2*C, (Math.cos(PHI)-Math.sin(PHI))*C/2];
+const cubeH = 2*(N-1)*C;
+const originY = H/2 - cubeH/2;
+const originX = W/2;
+const origin = [originX, originY];
+const rightOrigin = [originX+(N-1)*R[0], originY+(N-1)*R[1]];
+const leftOrigin  = [originX+(N-1)*L[0], originY+(N-1)*L[1]];
+
+const CENTER    = [originX, originY+(N-1)*C];
+const TOP       = [originX, originY];
+const TOP_RIGHT = [rightOrigin[0], rightOrigin[1]];
+const BOT_RIGHT = [rightOrigin[0], rightOrigin[1]+(N-1)*C];
+const BOT_FRONT = [originX, originY+2*(N-1)*C];
+const BOT_LEFT  = [leftOrigin[0], leftOrigin[1]+(N-1)*C];
+const PATH = [CENTER, TOP, TOP_RIGHT, BOT_RIGHT, BOT_FRONT, BOT_LEFT, CENTER];
+const CYCLE_MS = 11000;
+
+function topFaceDot(i,j)   { return [origin[0]+i*R[0]+j*L[0], origin[1]+i*R[1]+j*L[1]]; }
+function rightFaceDot(j,k) { return [rightOrigin[0]+j*L[0], rightOrigin[1]+j*L[1]+k*C]; }
+function leftFaceDot(i,k)  { return [leftOrigin[0]+i*R[0], leftOrigin[1]+i*R[1]+k*C]; }
+
+const allDots = [], seen = new Set();
+function addDot(sx,sy,face,depth){
+  const key=`${Math.round(sx)},${Math.round(sy)}`;
+  if(seen.has(key)) return; seen.add(key);
+  allDots.push({sx,sy,face,depth});
+}
+for(let i=0;i<N;i++) for(let j=0;j<N;j++){ const[sx,sy]=topFaceDot(i,j);   addDot(sx,sy,'top',i+j); }
+for(let j=0;j<N;j++) for(let k=0;k<N;k++){ const[sx,sy]=rightFaceDot(j,k); addDot(sx,sy,'right',(N-1-j)+k+(N-1)); }
+for(let i=0;i<N;i++) for(let k=0;k<N;k++){ const[sx,sy]=leftFaceDot(i,k);  addDot(sx,sy,'left',(N-1-i)+k+(N-1)); }
+allDots.sort((a,b)=>a.depth-b.depth);
+
+const DOT_R = 3.5;
+const SIGMA = (N-1)*Math.sqrt(3)/2*C*0.65;
+const BRIGHT = {top:1.0, left:0.60, right:0.38};
+const cubeCenterX = originX;
+const cubeCenterY = originY+(N-1)*C;
+
+function glowFactor(sx,sy,cx,cy){
+  const d = Math.hypot(sx-cx, sy-cy);
+  return Math.exp(-(d*d)/(2*SIGMA*SIGMA));
+}
+
+function drawDot(sx,sy,r,face,glow){
+  const effB = BRIGHT[face]*(1-glow) + 0.90*glow;
+  const b = effB*(0.64+0.36*glow);
+  const w = glow;
+  const cR0 = Math.round(55+w*(255-55));
+  const cG0 = Math.round(120+w*(255-120));
+  const cB0 = 255;
+  const cR1 = Math.round(40+w*(150-40));
+  const cG1 = Math.round(100+w*(20-100));
+  const cB1 = 210;
+  const g = ctx.createRadialGradient(sx-r*.32,sy-r*.36,r*.04,sx,sy,r);
+  g.addColorStop(0,   `rgba(${cR0},${cG0},${cB0},${b})`);
+  g.addColorStop(0.4, `rgba(${cR1},${cG1},${cB1},${b})`);
+  g.addColorStop(0.75,`rgba(40,90,200,${b})`);
+  g.addColorStop(1,   `rgba(12,28,90,${b})`);
+  ctx.beginPath(); ctx.arc(sx,sy,r,0,Math.PI*2);
+  ctx.fillStyle=g; ctx.fill();
+  const h = ctx.createRadialGradient(sx-r*.28,sy-r*.34,0,sx-r*.28,sy-r*.34,r*.44);
+  h.addColorStop(0, `rgba(255,255,255,${b*.80})`);
+  h.addColorStop(.3,`rgba(255,255,255,${b*.12})`);
+  h.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.beginPath(); ctx.arc(sx,sy,r,0,Math.PI*2);
+  ctx.fillStyle=h; ctx.fill();
+}
+
+function getCenter(elapsed){
+  const segs = PATH.length-1;
+  const pos  = (elapsed/CYCLE_MS)*segs;
+  const seg  = Math.min(segs-1,Math.floor(pos));
+  const t    = pos-seg;
+  const a=PATH[seg], b=PATH[seg+1];
+  return [a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t];
+}
+
+let mouseX=null, mouseY=null;
+canvas.addEventListener('mousemove', e => {
+  const rect=canvas.getBoundingClientRect();
+  mouseX=(e.clientX-rect.left)*(W/rect.width);
+  mouseY=(e.clientY-rect.top)*(H/rect.height);
+});
+canvas.addEventListener('mouseleave',()=>{ mouseX=null; mouseY=null; });
+
+let start=null;
+function render(ts){
+  if(!start) start=ts;
+  const [cx,cy]=(mouseX!==null)?[mouseX,mouseY]:getCenter((ts-start)%CYCLE_MS);
+  ctx.fillStyle='#060d28';
+  ctx.fillRect(0,0,W,H);
+  const mg=ctx.createRadialGradient(cx,cy,0,cx,cy,cubeH*0.55);
+  mg.addColorStop(0,  'rgba(90,30,160,0.28)');
+  mg.addColorStop(0.4,'rgba(50,20,120,0.16)');
+  mg.addColorStop(1,  'rgba(0,0,0,0)');
+  ctx.fillStyle=mg; ctx.fillRect(0,0,W,H);
+  for(const d of allDots){
+    const glow=glowFactor(d.sx,d.sy,cx,cy);
+    const r=DOT_R+10.7*glow;
+    drawDot(d.sx,d.sy,r,d.face,glow);
+  }
+  requestAnimationFrame(render);
+}
+requestAnimationFrame(render);
+</script>
+</body>
+</html>
