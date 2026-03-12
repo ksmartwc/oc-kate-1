@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dot Sphere</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #060d28; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<canvas id="c" width="800" height="800"></canvas>
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+
+// ── Sphere parameters ──────────────────────────────────
+const N = 16;          // dots per latitude ring
+const RINGS = 15;      // number of latitude rings
+const RADIUS = 160;    // sphere radius in pixels
+const CX = W / 2;
+const CY = H / 2;
+
+// Isometric tilt — same feel as the cube
+const TILT_X = 0.45;   // rotation around X axis (tilt toward viewer)
+const TILT_Z = 0.12;   // slight Z rotation (same PHI as cube)
+
+// ── Animation ──────────────────────────────────────────
+const CYCLE_MS = 11000;
+const DOT_R = 3.5;
+const SIGMA = RADIUS * 0.65;
+const BRIGHT = { front: 1.0, side: 0.68, back: 0.38 };
+
+// ── Build sphere dots ──────────────────────────────────
+const allDots = [];
+
+for (let ring = 0; ring <= RINGS; ring++) {
+  const phi = Math.PI * ring / RINGS;  // 0 (top) to PI (bottom)
+  const y3d = Math.cos(phi) * RADIUS;
+  const ringRadius = Math.sin(phi) * RADIUS;
+  const dotsInRing = Math.max(1, Math.round(N * Math.sin(phi)));
+
+  for (let i = 0; i < dotsInRing; i++) {
+    const theta = (2 * Math.PI * i) / dotsInRing;
+    const x3d = ringRadius * Math.cos(theta);
+    const z3d = ringRadius * Math.sin(theta);
+
+    // Apply isometric-like rotation
+    // Rotate around X axis (tilt)
+    const y1 = y3d * Math.cos(TILT_X) - z3d * Math.sin(TILT_X);
+    const z1 = y3d * Math.sin(TILT_X) + z3d * Math.cos(TILT_X);
+    // Rotate around Y axis (slight twist)
+    const x1 = x3d * Math.cos(TILT_Z) + z1 * Math.sin(TILT_Z);
+    const z2 = -x3d * Math.sin(TILT_Z) + z1 * Math.cos(TILT_Z);
+
+    const sx = CX + x1;
+    const sy = CY - y1;
+
+    // Face brightness based on z-depth (front = bright, back = dark)
+    const zNorm = (z2 + RADIUS) / (2 * RADIUS); // 0=back, 1=front
+    let face;
+    if (zNorm > 0.6) face = 'front';
+    else if (zNorm > 0.3) face = 'side';
+    else face = 'back';
+
+    // Only show front hemisphere (back dots would be hidden by the sphere)
+    if (z2 < -RADIUS * 0.15) continue;
+
+    allDots.push({ sx, sy, face, depth: sy - z2 * 0.5, zNorm });
+  }
+}
+allDots.sort((a, b) => a.depth - b.depth);
+
+// ── Cluster path — orbit around the sphere surface ─────
+function getCenter(elapsed) {
+  const t = (elapsed / CYCLE_MS) * Math.PI * 2;
+  // Trace a path around the visible hemisphere
+  const pathX = CX + Math.cos(t) * RADIUS * 0.7;
+  const pathY = CY + Math.sin(t * 0.7) * RADIUS * 0.6;
+  return [pathX, pathY];
+}
+
+// ── Glow ───────────────────────────────────────────────
+function glowFactor(sx, sy, cx, cy) {
+  const d = Math.hypot(sx - cx, sy - cy);
+  return Math.exp(-(d * d) / (2 * SIGMA * SIGMA));
+}
+
+// ── Draw dot (same style as cube) ──────────────────────
+const BRIGHT_MAP = { front: 1.0, side: 0.60, back: 0.38 };
+
+function drawDot(sx, sy, r, face, glow) {
+  const effB = BRIGHT_MAP[face] * (1 - glow) + 0.90 * glow;
+  const b = effB * (0.64 + 0.36 * glow);
+  const w = glow;
+
+  const cR0 = Math.round(55 + w * (255 - 55));
+  const cG0 = Math.round(120 + w * (255 - 120));
+  const cB0 = 255;
+
+  const cR1 = Math.round(40 + w * (150 - 40));
+  const cG1 = Math.round(100 + w * (20 - 100));
+  const cB1 = 210;
+
+  const g = ctx.createRadialGradient(sx - r * .32, sy - r * .36, r * .04, sx, sy, r);
+  g.addColorStop(0, `rgba(${cR0},${cG0},${cB0},${b})`);
+  g.addColorStop(0.4, `rgba(${cR1},${cG1},${cB1},${b})`);
+  g.addColorStop(0.75, `rgba(40,90,200,${b})`);
+  g.addColorStop(1, `rgba(12,28,90,${b})`);
+  ctx.beginPath(); ctx.arc(sx, sy, r, 0, Math.PI * 2); ctx.fillStyle = g; ctx.fill();
+
+  const h = ctx.createRadialGradient(sx - r * .28, sy - r * .34, 0, sx - r * .28, sy - r * .34, r * .44);
+  h.addColorStop(0, `rgba(255,255,255,${b * .80})`);
+  h.addColorStop(.3, `rgba(255,255,255,${b * .12})`);
+  h.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.beginPath(); ctx.arc(sx, sy, r, 0, Math.PI * 2); ctx.fillStyle = h; ctx.fill();
+}
+
+// ── Background ─────────────────────────────────────────
+function drawBackground(cx, cy) {
+  ctx.fillStyle = '#060d28';
+  ctx.fillRect(0, 0, W, H);
+  if (cx !== undefined) {
+    const mg = ctx.createRadialGradient(cx, cy, 0, cx, cy, RADIUS * 1.8);
+    mg.addColorStop(0, 'rgba(90, 30, 160, 0.30)');
+    mg.addColorStop(0.4, 'rgba(50, 20, 120, 0.18)');
+    mg.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = mg;
+    ctx.fillRect(0, 0, W, H);
+  }
+}
+
+// ── Mouse tracking ─────────────────────────────────────
+let mouseX = null, mouseY = null;
+canvas.addEventListener('mousemove', e => {
+  const rect = canvas.getBoundingClientRect();
+  mouseX = (e.clientX - rect.left) * (W / rect.width);
+  mouseY = (e.clientY - rect.top) * (H / rect.height);
+});
+canvas.addEventListener('mouseleave', () => { mouseX = null; mouseY = null; });
+
+// ── Render loop ────────────────────────────────────────
+let start = null;
+function render(ts) {
+  if (!start) start = ts;
+  const [cx, cy] = (mouseX !== null) ? [mouseX, mouseY] : getCenter((ts - start) % CYCLE_MS);
+  drawBackground(cx, cy);
+  for (const d of allDots) {
+    const glow = glowFactor(d.sx, d.sy, cx, cy);
+    const r = DOT_R + 13.2 * glow;
+    drawDot(d.sx, d.sy, r, d.face, glow);
+  }
+  requestAnimationFrame(render);
+}
+requestAnimationFrame(render);
+</script>
+</body>
+</html>

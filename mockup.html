@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #030a1e; font-family: 'Inter', -apple-system, sans-serif; }
+
+  .frame {
+    width: 1440px;
+    height: 900px;
+    background: #060d28;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+  }
+
+  /* Background glow */
+  .bg-glow {
+    position: absolute;
+    width: 700px;
+    height: 500px;
+    border-radius: 50%;
+    background: radial-gradient(ellipse, rgba(40, 80, 220, 0.18) 0%, transparent 70%);
+    right: 10%;
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+  }
+
+  /* Left content */
+  .left {
+    position: absolute;
+    left: 100px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 520px;
+  }
+
+  .tag {
+    display: inline-block;
+    background: rgba(60, 100, 255, 0.15);
+    border: 1px solid rgba(60, 100, 255, 0.35);
+    color: #6b9fff;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 6px 14px;
+    border-radius: 20px;
+    margin-bottom: 28px;
+  }
+
+  h1 {
+    font-size: 62px;
+    font-weight: 700;
+    line-height: 1.1;
+    color: #ffffff;
+    margin-bottom: 24px;
+    letter-spacing: -1.5px;
+  }
+
+  h1 span {
+    background: linear-gradient(135deg, #4d8fff 0%, #a78bff 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .subtitle {
+    font-size: 18px;
+    line-height: 1.6;
+    color: rgba(255,255,255,0.5);
+    margin-bottom: 44px;
+    max-width: 420px;
+  }
+
+  .buttons {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, #3b6fd4 0%, #5a4fcf 100%);
+    color: #fff;
+    font-size: 15px;
+    font-weight: 600;
+    padding: 14px 32px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    letter-spacing: 0.3px;
+  }
+
+  .btn-secondary {
+    color: rgba(255,255,255,0.6);
+    font-size: 15px;
+    font-weight: 500;
+    padding: 14px 24px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.12);
+    cursor: pointer;
+    background: transparent;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .btn-secondary::before {
+    content: '▶';
+    font-size: 11px;
+    color: #6b9fff;
+  }
+
+  .stats {
+    display: flex;
+    gap: 40px;
+    margin-top: 56px;
+    padding-top: 40px;
+    border-top: 1px solid rgba(255,255,255,0.07);
+  }
+
+  .stat-val {
+    font-size: 28px;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: -0.5px;
+  }
+
+  .stat-label {
+    font-size: 13px;
+    color: rgba(255,255,255,0.35);
+    margin-top: 4px;
+    letter-spacing: 0.3px;
+  }
+
+  /* Right — cube placeholder */
+  .right {
+    position: absolute;
+    right: 80px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 580px;
+    height: 580px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  canvas {
+    display: block;
+  }
+
+  /* Nav */
+  nav {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 72px;
+    display: flex;
+    align-items: center;
+    padding: 0 100px;
+    justify-content: space-between;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+  }
+
+  .logo {
+    font-size: 20px;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: -0.5px;
+  }
+
+  .logo span { color: #4d8fff; }
+
+  .nav-links {
+    display: flex;
+    gap: 36px;
+  }
+
+  .nav-links a {
+    color: rgba(255,255,255,0.45);
+    font-size: 14px;
+    text-decoration: none;
+    font-weight: 500;
+  }
+
+  .nav-cta {
+    background: rgba(60,100,255,0.15);
+    border: 1px solid rgba(60,100,255,0.3);
+    color: #6b9fff;
+    font-size: 14px;
+    font-weight: 600;
+    padding: 8px 20px;
+    border-radius: 6px;
+  }
+</style>
+</head>
+<body>
+<div class="frame">
+  <!-- Nav -->
+  <nav>
+    <div class="logo">dot<span>cube</span></div>
+    <div class="nav-links">
+      <a href="#">Features</a>
+      <a href="#">Demos</a>
+      <a href="#">Pricing</a>
+      <a href="#">Docs</a>
+    </div>
+    <div class="nav-cta">Get Template →</div>
+  </nav>
+
+  <div class="bg-glow"></div>
+
+  <!-- Left content -->
+  <div class="left">
+    <div class="tag">Animated Hero Component</div>
+    <h1>Design that<br>moves with <span>purpose</span></h1>
+    <p class="subtitle">A production-ready animated 3D dot cube for your next SaaS, AI, or data product hero section. Pure Canvas. No WebGL.</p>
+    <div class="buttons">
+      <button class="btn-primary">Buy Template — $29</button>
+      <button class="btn-secondary">Live Preview</button>
+    </div>
+    <div class="stats">
+      <div>
+        <div class="stat-val">800px</div>
+        <div class="stat-label">Canvas Size</div>
+      </div>
+      <div>
+        <div class="stat-val">3</div>
+        <div class="stat-label">Color Variants</div>
+      </div>
+      <div>
+        <div class="stat-val">0</div>
+        <div class="stat-label">Dependencies</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right: cube canvas -->
+  <div class="right">
+    <canvas id="cube" width="500" height="500"></canvas>
+  </div>
+</div>
+
+<script>
+// Simplified static cube render for mockup
+const canvas = document.getElementById('cube');
+const ctx = canvas.getContext('2d');
+const W = 500, H = 500;
+
+const N = 8, C = 22;
+const PHI = 0.12;
+const Rx = Math.sqrt(3)/2 * C, Ry = C/2;
+const Lx = -Math.sqrt(3)/2 * C, Ly = C/2;
+const cosP = Math.cos(PHI), sinP = Math.sin(PHI);
+const R = [Rx*cosP - Ry*sinP, Rx*sinP + Ry*cosP];
+const L = [Lx*cosP - Ly*sinP, Lx*sinP + Ly*cosP];
+const Up = [0, -C];
+const cubeH = 2*(N-1)*C;
+const originX = W/2, originY = H/2 - cubeH/2;
+const BRIGHT = {top:1.0, left:0.68, right:0.52};
+const DOT_R = 3.5;
+const CLUSTER_CX = originX, CLUSTER_CY = originY + (N-1)*C;
+
+function isoPos(ri, li, ui) {
+  return [
+    originX + ri*R[0] + li*L[0] + ui*Up[0],
+    originY + ri*R[1] + li*L[1] + ui*Up[1]
+  ];
+}
+
+function gaussian(x,y,cx,cy,sigma) {
+  const dx=(x-cx)/W, dy=(y-cy)/H;
+  return Math.exp(-(dx*dx+dy*dy)/(2*sigma*sigma));
+}
+
+// Background glow
+const bgGrad = ctx.createRadialGradient(CLUSTER_CX, CLUSTER_CY, 0, CLUSTER_CX, CLUSTER_CY, 280);
+bgGrad.addColorStop(0, 'rgba(30,60,200,0.22)');
+bgGrad.addColorStop(1, 'rgba(6,13,40,0)');
+ctx.fillStyle = '#060d28';
+ctx.fillRect(0,0,W,H);
+ctx.fillStyle = bgGrad;
+ctx.fillRect(0,0,W,H);
+
+const SIGMA = 0.65;
+const dots = [];
+
+// Collect all dots with depth
+// Top face
+for(let r=0;r<N;r++) for(let l=0;l<N;l++) {
+  const [x,y] = isoPos(r,l,N-1);
+  const glow = gaussian(x,y,CLUSTER_CX,CLUSTER_CY,SIGMA);
+  dots.push({x,y,glow,face:'top',depth: r+l});
+}
+// Left face
+for(let r=0;r<N;r++) for(let u=0;u<N-1;u++) {
+  const [x,y] = isoPos(r,0,u);
+  const glow = gaussian(x,y,CLUSTER_CX,CLUSTER_CY,SIGMA);
+  dots.push({x,y,glow,face:'left',depth: r-u});
+}
+// Right face
+for(let l=0;l<N;l++) for(let u=0;u<N-1;u++) {
+  const [x,y] = isoPos(0,l,u);
+  const glow = gaussian(x,y,CLUSTER_CX,CLUSTER_CY,SIGMA);
+  dots.push({x,y,glow,face:'right',depth: -l-u});
+}
+
+dots.sort((a,b) => a.depth - b.depth);
+
+for(const d of dots) {
+  const b = BRIGHT[d.face];
+  const warmT = d.glow;
+  const fr = Math.round((55 + warmT*65) * b);
+  const fg = Math.round((120 + warmT*80) * b);
+  const fb = Math.round(255 * b);
+  const r = DOT_R + 10.7 * d.glow;
+  
+  if(d.glow > 0.05) {
+    const grd = ctx.createRadialGradient(d.x, d.y, 0, d.x, d.y, r*2.5);
+    grd.addColorStop(0, `rgba(${fr},${fg},${fb},${0.18*d.glow})`);
+    grd.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = grd;
+    ctx.beginPath();
+    ctx.arc(d.x, d.y, r*2.5, 0, Math.PI*2);
+    ctx.fill();
+  }
+  
+  ctx.beginPath();
+  ctx.arc(d.x, d.y, r, 0, Math.PI*2);
+  
+  if(d.glow > 0.3) {
+    const g = ctx.createRadialGradient(d.x-r*0.3, d.y-r*0.3, 0, d.x, d.y, r);
+    g.addColorStop(0, `rgba(255,255,255,${0.9*d.glow})`);
+    g.addColorStop(0.4, `rgba(${fr},${fg},${fb},1)`);
+    g.addColorStop(1, `rgba(${Math.round(fr*0.6)},${Math.round(fg*0.6)},${fb},1)`);
+    ctx.fillStyle = g;
+  } else {
+    ctx.fillStyle = `rgb(${fr},${fg},${fb})`;
+  }
+  ctx.fill();
+}
+</script>
+</body>
+</html>
