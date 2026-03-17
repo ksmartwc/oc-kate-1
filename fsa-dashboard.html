@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FSA Dashboard — Prototype</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, 'Segoe UI', Roboto, sans-serif;
+    background: #f5f6fa;
+    color: #2c3e50;
+    line-height: 1.6;
+  }
+
+  /* Top Nav */
+  .top-bar {
+    background: #00338d;
+    color: #fff;
+    padding: 12px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 14px;
+  }
+  .top-bar .logo {
+    font-weight: 700;
+    font-size: 20px;
+    letter-spacing: 2px;
+  }
+  .top-bar .user { opacity: 0.85; }
+
+  /* Container */
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 24px 32px;
+  }
+
+  /* Page Header */
+  .page-header {
+    background: #fff;
+    border-radius: 12px;
+    padding: 24px 28px;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+  .page-header h1 {
+    font-size: 22px;
+    font-weight: 700;
+    color: #00338d;
+    margin-bottom: 16px;
+  }
+  .meta-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
+  }
+  .meta-item {
+    background: #f0f4ff;
+    border-radius: 8px;
+    padding: 12px 16px;
+  }
+  .meta-item .label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #6b7280;
+    margin-bottom: 4px;
+  }
+  .meta-item .value {
+    font-size: 15px;
+    font-weight: 600;
+    color: #1e293b;
+  }
+
+  /* Status Banner */
+  .status-banner {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+  .status-card {
+    flex: 1;
+    background: #fff;
+    border-radius: 12px;
+    padding: 20px 24px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    text-align: center;
+  }
+  .status-card .number {
+    font-size: 36px;
+    font-weight: 700;
+  }
+  .status-card .desc {
+    font-size: 13px;
+    color: #6b7280;
+    margin-top: 4px;
+  }
+  .status-card.total .number { color: #00338d; }
+  .status-card.open .number { color: #e74c3c; }
+  .status-card.resolved .number { color: #27ae60; }
+  .status-card.iteration .number { color: #8b5cf6; }
+
+  /* Sections */
+  .section {
+    background: #fff;
+    border-radius: 12px;
+    padding: 24px 28px;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+  .section h2 {
+    font-size: 16px;
+    font-weight: 700;
+    color: #00338d;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .section h2 .icon {
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    color: #fff;
+  }
+
+  /* Chart Area */
+  .chart-container {
+    position: relative;
+    height: 360px;
+    margin-bottom: 12px;
+  }
+  .chart-note {
+    font-size: 12px;
+    color: #9ca3af;
+    text-align: center;
+    font-style: italic;
+  }
+
+  /* Sentiment Analysis */
+  .sentiment-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 16px;
+  }
+  .sentiment-card {
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 16px 20px;
+    position: relative;
+    overflow: hidden;
+  }
+  .sentiment-card::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 4px;
+  }
+  .sentiment-card.positive::before { background: #27ae60; }
+  .sentiment-card.neutral::before { background: #f59e0b; }
+  .sentiment-card.negative::before { background: #e74c3c; }
+  .sentiment-card .s-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #6b7280;
+    margin-bottom: 6px;
+  }
+  .sentiment-card .s-score {
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+  .sentiment-card.positive .s-score { color: #27ae60; }
+  .sentiment-card.neutral .s-score { color: #f59e0b; }
+  .sentiment-card.negative .s-score { color: #e74c3c; }
+  .sentiment-card .s-detail {
+    font-size: 13px;
+    color: #6b7280;
+  }
+
+  /* Open Issues Table */
+  .issues-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+  }
+  .issues-table thead {
+    background: #f8fafc;
+  }
+  .issues-table th {
+    text-align: left;
+    padding: 10px 14px;
+    font-weight: 600;
+    color: #6b7280;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    border-bottom: 2px solid #e5e7eb;
+  }
+  .issues-table td {
+    padding: 10px 14px;
+    border-bottom: 1px solid #f1f3f5;
+  }
+  .issues-table tr:hover {
+    background: #f8fafc;
+  }
+  .badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .badge.high { background: #fee2e2; color: #dc2626; }
+  .badge.medium { background: #fef3c7; color: #d97706; }
+  .badge.low { background: #dcfce7; color: #16a34a; }
+  .badge.math { background: #ede9fe; color: #7c3aed; }
+  .badge.internal { background: #dbeafe; color: #2563eb; }
+  .badge.prior { background: #fce7f3; color: #db2777; }
+  .badge.disclosure { background: #f0fdf4; color: #15803d; }
+
+  /* Category Legend */
+  .legend-row {
+    display: flex;
+    gap: 24px;
+    justify-content: center;
+    margin-top: 8px;
+    flex-wrap: wrap;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: #6b7280;
+  }
+  .legend-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+  }
+
+  /* Footer */
+  .footer {
+    text-align: center;
+    padding: 20px;
+    font-size: 12px;
+    color: #9ca3af;
+  }
+</style>
+</head>
+<body>
+
+<!-- Top Nav -->
+<div class="top-bar">
+  <div class="logo">AUDIT CO.</div>
+  <div class="user">Jane Smith, Manager &middot; Audit Division</div>
+</div>
+
+<div class="container">
+
+  <!-- Page Header -->
+  <div class="page-header">
+    <h1>Financial Statement Analysis Dashboard</h1>
+    <div class="meta-grid">
+      <div class="meta-item">
+        <div class="label">Entity</div>
+        <div class="value">Acme Global Inc.</div>
+      </div>
+      <div class="meta-item">
+        <div class="label">Fiscal Year</div>
+        <div class="value">FY 2025</div>
+      </div>
+      <div class="meta-item">
+        <div class="label">Period</div>
+        <div class="value">Jan 1 – Dec 31, 2025</div>
+      </div>
+      <div class="meta-item">
+        <div class="label">Document</div>
+        <div class="value">Annual Report (10-K)</div>
+      </div>
+      <div class="meta-item">
+        <div class="label">Current Iteration</div>
+        <div class="value">Iteration 4 of 10</div>
+      </div>
+      <div class="meta-item">
+        <div class="label">Last Updated</div>
+        <div class="value">March 15, 2026 — 2:30 PM</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Status Cards -->
+  <div class="status-banner">
+    <div class="status-card total">
+      <div class="number">47</div>
+      <div class="desc">Total Issues Found</div>
+    </div>
+    <div class="status-card open">
+      <div class="number">12</div>
+      <div class="desc">Open Issues</div>
+    </div>
+    <div class="status-card resolved">
+      <div class="number">35</div>
+      <div class="desc">Resolved</div>
+    </div>
+    <div class="status-card iteration">
+      <div class="number">4</div>
+      <div class="desc">Current Iteration</div>
+    </div>
+  </div>
+
+  <!-- Issues Trend Chart -->
+  <div class="section">
+    <h2>
+      <span class="icon" style="background:#00338d;">📊</span>
+      Issues by Iteration — Analysis Categories
+    </h2>
+    <div class="chart-container">
+      <canvas id="issuesChart"></canvas>
+    </div>
+    <div class="chart-note">Each iteration represents a new file version received from the client</div>
+  </div>
+
+  <!-- Sentiment Analysis -->
+  <div class="section">
+    <h2>
+      <span class="icon" style="background:#8b5cf6;">💬</span>
+      Sentiment Analysis
+    </h2>
+    <div class="sentiment-grid">
+      <div class="sentiment-card positive">
+        <div class="s-label">Positive Tone</div>
+        <div class="s-score">62%</div>
+        <div class="s-detail">Revenue growth language, forward-looking statements, strategic initiatives</div>
+      </div>
+      <div class="sentiment-card neutral">
+        <div class="s-label">Neutral Tone</div>
+        <div class="s-score">28%</div>
+        <div class="s-detail">Standard disclosures, accounting policy descriptions, factual reporting</div>
+      </div>
+      <div class="sentiment-card negative">
+        <div class="s-label">Cautionary / Risk Language</div>
+        <div class="s-score">10%</div>
+        <div class="s-detail">Risk factors, litigation contingencies, going concern language</div>
+      </div>
+    </div>
+    <div style="margin-top:16px;">
+      <div class="chart-container" style="height:240px;">
+        <canvas id="sentimentChart"></canvas>
+      </div>
+      <div class="chart-note">Sentiment distribution across iterations</div>
+    </div>
+  </div>
+
+  <!-- Open Issues Table -->
+  <div class="section">
+    <h2>
+      <span class="icon" style="background:#e74c3c;">⚠️</span>
+      Open Issues (12)
+    </h2>
+    <table class="issues-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Category</th>
+          <th>Severity</th>
+          <th>Description</th>
+          <th>Location</th>
+          <th>Found</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>#047</td>
+          <td><span class="badge math">Math Accuracy</span></td>
+          <td><span class="badge high">High</span></td>
+          <td>Total assets do not sum correctly on Balance Sheet</td>
+          <td>BS, Line 42</td>
+          <td>Iter 4</td>
+          <td>Open</td>
+        </tr>
+        <tr>
+          <td>#044</td>
+          <td><span class="badge internal">Internal Consistency</span></td>
+          <td><span class="badge high">High</span></td>
+          <td>Revenue on Income Statement ≠ Revenue in Note 3</td>
+          <td>IS / Note 3</td>
+          <td>Iter 3</td>
+          <td>Open</td>
+        </tr>
+        <tr>
+          <td>#041</td>
+          <td><span class="badge prior">Prior Year</span></td>
+          <td><span class="badge medium">Medium</span></td>
+          <td>Prior year retained earnings restated without explanation</td>
+          <td>BS, Line 58</td>
+          <td>Iter 3</td>
+          <td>Open</td>
+        </tr>
+        <tr>
+          <td>#039</td>
+          <td><span class="badge disclosure">Disclosure</span></td>
+          <td><span class="badge medium">Medium</span></td>
+          <td>Missing lease liability disclosure per ASC 842</td>
+          <td>Note 8</td>
+          <td>Iter 2</td>
+          <td>Open</td>
+        </tr>
+        <tr>
+          <td>#038</td>
+          <td><span class="badge math">Math Accuracy</span></td>
+          <td><span class="badge medium">Medium</span></td>
+          <td>Cash flow from operations subtotal off by $2.3M</td>
+          <td>CF, Line 18</td>
+          <td>Iter 2</td>
+          <td>Open</td>
+        </tr>
+        <tr>
+          <td>#036</td>
+          <td><span class="badge disclosure">Disclosure</span></td>
+          <td><span class="badge medium">Medium</span></td>
+          <td>Related party transactions not fully disclosed</td>
+          <td>Note 14</td>
+          <td>Iter 2</td>
+          <td>Open</td>
+        </tr>
+        <tr>
+          <td>#035</td>
+          <td><span class="badge internal">Internal Consistency</span></td>
+          <td><span class="badge low">Low</span></td>
+          <td>Depreciation in notes vs. income statement — $0.4M gap</td>
+          <td>Note 5 / IS</td>
+          <td>Iter 3</td>
+          <td>Open</td>
+        </tr>
+        <tr>
+          <td>#033</td>
+          <td><span class="badge prior">Prior Year</span></td>
+          <td><span class="badge low">Low</span></td>
+          <td>Comparative EPS doesn't match prior year filing</td>
+          <td>IS, Line 64</td>
+          <td>Iter 2</td>
+          <td>Open</td>
+        </tr>
+        <tr>
+          <td>#031</td>
+          <td><span class="badge disclosure">Disclosure</span></td>
+          <td><span class="badge low">Low</span></td>
+          <td>Segment revenue breakdown incomplete</td>
+          <td>Note 16</td>
+          <td>Iter 1</td>
+          <td>Open</td>
+        </tr>
+        <tr>
+          <td>#028</td>
+          <td><span class="badge math">Math Accuracy</span></td>
+          <td><span class="badge low">Low</span></td>
+          <td>Rounding differences in EPS calculation</td>
+          <td>IS, Line 62</td>
+          <td>Iter 1</td>
+          <td>Open</td>
+        </tr>
+        <tr>
+          <td>#025</td>
+          <td><span class="badge internal">Internal Consistency</span></td>
+          <td><span class="badge low">Low</span></td>
+          <td>Tax rate in notes vs. effective rate on IS differ</td>
+          <td>Note 9 / IS</td>
+          <td>Iter 2</td>
+          <td>Open</td>
+        </tr>
+        <tr>
+          <td>#022</td>
+          <td><span class="badge prior">Prior Year</span></td>
+          <td><span class="badge low">Low</span></td>
+          <td>Goodwill balance changed from prior year without M&A note</td>
+          <td>BS / Note 6</td>
+          <td>Iter 1</td>
+          <td>Open</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+</div>
+
+<div class="footer">
+  Financial Statement Analysis Dashboard &middot; Prototype
+</div>
+
+<script>
+// Issues by Iteration — Stacked Bar Chart
+const issuesCtx = document.getElementById('issuesChart').getContext('2d');
+new Chart(issuesCtx, {
+  type: 'bar',
+  data: {
+    labels: ['Iteration 1', 'Iteration 2', 'Iteration 3', 'Iteration 4'],
+    datasets: [
+      {
+        label: 'Mathematical Accuracy',
+        data: [8, 5, 3, 1],
+        backgroundColor: '#7c3aed',
+        borderRadius: 3,
+      },
+      {
+        label: 'Internal Consistency',
+        data: [6, 4, 3, 2],
+        backgroundColor: '#2563eb',
+        borderRadius: 3,
+      },
+      {
+        label: 'Prior Year Consistency',
+        data: [5, 4, 2, 1],
+        backgroundColor: '#db2777',
+        borderRadius: 3,
+      },
+      {
+        label: 'Disclosure Checklist',
+        data: [9, 6, 4, 3],
+        backgroundColor: '#15803d',
+        borderRadius: 3,
+      }
+    ]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: 'bottom',
+        labels: {
+          usePointStyle: true,
+          pointStyle: 'rectRounded',
+          padding: 20,
+          font: { size: 13 }
+        }
+      },
+      tooltip: {
+        callbacks: {
+          afterBody: function(context) {
+            const idx = context[0].dataIndex;
+            const total = context[0].chart.data.datasets.reduce((sum, ds) => sum + ds.data[idx], 0);
+            return `\nTotal open issues: ${total}`;
+          }
+        }
+      }
+    },
+    scales: {
+      x: {
+        stacked: true,
+        grid: { display: false },
+        ticks: { font: { size: 13 } }
+      },
+      y: {
+        stacked: true,
+        beginAtZero: true,
+        title: {
+          display: true,
+          text: 'Open Issues',
+          font: { size: 13, weight: 'bold' }
+        },
+        ticks: {
+          stepSize: 5,
+          font: { size: 12 }
+        }
+      }
+    }
+  }
+});
+
+// Sentiment Over Iterations — Line Chart
+const sentCtx = document.getElementById('sentimentChart').getContext('2d');
+new Chart(sentCtx, {
+  type: 'line',
+  data: {
+    labels: ['Iteration 1', 'Iteration 2', 'Iteration 3', 'Iteration 4'],
+    datasets: [
+      {
+        label: 'Positive',
+        data: [55, 58, 60, 62],
+        borderColor: '#27ae60',
+        backgroundColor: 'rgba(39,174,96,0.1)',
+        fill: true,
+        tension: 0.3,
+        pointRadius: 5,
+      },
+      {
+        label: 'Neutral',
+        data: [30, 29, 28, 28],
+        borderColor: '#f59e0b',
+        backgroundColor: 'rgba(245,158,11,0.1)',
+        fill: true,
+        tension: 0.3,
+        pointRadius: 5,
+      },
+      {
+        label: 'Cautionary / Risk',
+        data: [15, 13, 12, 10],
+        borderColor: '#e74c3c',
+        backgroundColor: 'rgba(231,76,60,0.1)',
+        fill: true,
+        tension: 0.3,
+        pointRadius: 5,
+      }
+    ]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: 'bottom',
+        labels: {
+          usePointStyle: true,
+          padding: 20,
+          font: { size: 13 }
+        }
+      }
+    },
+    scales: {
+      x: {
+        grid: { display: false },
+        ticks: { font: { size: 13 } }
+      },
+      y: {
+        beginAtZero: true,
+        max: 100,
+        title: {
+          display: true,
+          text: 'Percentage (%)',
+          font: { size: 13, weight: 'bold' }
+        },
+        ticks: {
+          callback: v => v + '%',
+          font: { size: 12 }
+        }
+      }
+    }
+  }
+});
+</script>
+
+</body>
+</html>
