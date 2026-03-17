@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FSA Dashboard 2029 — AI-Powered Prototype</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, 'Segoe UI', Roboto, sans-serif;
+    background: #0a0f1e;
+    color: #e2e8f0;
+    line-height: 1.6;
+  }
+
+  /* Top Nav */
+  .top-bar {
+    background: rgba(15,20,40,0.95);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid rgba(99,102,241,0.2);
+    padding: 12px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 14px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .top-bar .logo {
+    font-weight: 700;
+    font-size: 18px;
+    letter-spacing: 1px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .logo-dot {
+    width: 8px; height: 8px;
+    background: #6366f1;
+    border-radius: 50%;
+    box-shadow: 0 0 12px #6366f1;
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 0 8px #6366f1; }
+    50% { box-shadow: 0 0 20px #6366f1, 0 0 40px rgba(99,102,241,0.3); }
+  }
+  .top-bar .user { opacity: 0.6; font-size: 13px; }
+  .ai-badge {
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+  }
+
+  /* Container */
+  .container {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 24px 32px;
+  }
+
+  /* AI Summary Banner */
+  .ai-summary {
+    background: linear-gradient(135deg, rgba(99,102,241,0.12), rgba(139,92,246,0.08));
+    border: 1px solid rgba(99,102,241,0.25);
+    border-radius: 16px;
+    padding: 24px 28px;
+    margin-bottom: 20px;
+    position: relative;
+    overflow: hidden;
+  }
+  .ai-summary::before {
+    content: '';
+    position: absolute;
+    top: -50%; right: -20%;
+    width: 300px; height: 300px;
+    background: radial-gradient(circle, rgba(99,102,241,0.08), transparent 70%);
+  }
+  .ai-summary .ai-icon {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #818cf8;
+    margin-bottom: 12px;
+    font-weight: 600;
+  }
+  .ai-summary .summary-text {
+    font-size: 15px;
+    line-height: 1.8;
+    color: #cbd5e1;
+    position: relative;
+  }
+  .ai-summary .summary-text strong {
+    color: #e2e8f0;
+  }
+  .ai-summary .confidence {
+    margin-top: 12px;
+    font-size: 12px;
+    color: #64748b;
+  }
+  .confidence-bar {
+    display: inline-block;
+    width: 120px;
+    height: 6px;
+    background: rgba(99,102,241,0.2);
+    border-radius: 3px;
+    margin-left: 8px;
+    vertical-align: middle;
+    position: relative;
+    overflow: hidden;
+  }
+  .confidence-bar .fill {
+    height: 100%;
+    border-radius: 3px;
+    background: linear-gradient(90deg, #6366f1, #22c55e);
+  }
+
+  /* Page Header */
+  .page-header {
+    background: rgba(30,35,55,0.6);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(99,102,241,0.1);
+    border-radius: 16px;
+    padding: 24px 28px;
+    margin-bottom: 20px;
+  }
+  .page-header h1 {
+    font-size: 20px;
+    font-weight: 700;
+    color: #e2e8f0;
+    margin-bottom: 16px;
+  }
+  .meta-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+  }
+  .meta-item {
+    background: rgba(99,102,241,0.06);
+    border: 1px solid rgba(99,102,241,0.1);
+    border-radius: 10px;
+    padding: 12px 16px;
+  }
+  .meta-item .label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: #64748b;
+    margin-bottom: 4px;
+  }
+  .meta-item .value {
+    font-size: 14px;
+    font-weight: 600;
+    color: #e2e8f0;
+  }
+
+  /* Status Cards */
+  .status-banner {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 14px;
+    margin-bottom: 20px;
+  }
+  .status-card {
+    background: rgba(30,35,55,0.6);
+    border: 1px solid rgba(99,102,241,0.1);
+    border-radius: 14px;
+    padding: 18px 20px;
+    text-align: center;
+  }
+  .status-card .number {
+    font-size: 32px;
+    font-weight: 700;
+  }
+  .status-card .desc {
+    font-size: 12px;
+    color: #64748b;
+    margin-top: 2px;
+  }
+  .status-card.total .number { color: #818cf8; }
+  .status-card.open .number { color: #f87171; }
+  .status-card.auto .number { color: #34d399; }
+  .status-card.resolved .number { color: #22c55e; }
+  .status-card.pred .number { color: #fbbf24; }
+  .status-card .sub {
+    font-size: 11px;
+    color: #22c55e;
+    margin-top: 4px;
+  }
+
+  /* Sections */
+  .section {
+    background: rgba(30,35,55,0.6);
+    border: 1px solid rgba(99,102,241,0.1);
+    border-radius: 16px;
+    padding: 24px 28px;
+    margin-bottom: 20px;
+  }
+  .section h2 {
+    font-size: 15px;
+    font-weight: 700;
+    color: #e2e8f0;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .section h2 .tag {
+    font-size: 10px;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+  }
+
+  /* Chart */
+  .chart-container {
+    position: relative;
+    height: 340px;
+    margin-bottom: 8px;
+  }
+  .chart-note {
+    font-size: 11px;
+    color: #475569;
+    text-align: center;
+    font-style: italic;
+  }
+
+  /* Two Column */
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+
+  /* Sentiment Cards */
+  .sentiment-row {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .sent-card {
+    flex: 1;
+    background: rgba(99,102,241,0.04);
+    border: 1px solid rgba(99,102,241,0.1);
+    border-radius: 12px;
+    padding: 14px 16px;
+    text-align: center;
+  }
+  .sent-card .s-val {
+    font-size: 26px;
+    font-weight: 700;
+  }
+  .sent-card .s-label {
+    font-size: 11px;
+    color: #64748b;
+    margin-top: 2px;
+  }
+  .sent-card.pos .s-val { color: #34d399; }
+  .sent-card.neu .s-val { color: #fbbf24; }
+  .sent-card.neg .s-val { color: #f87171; }
+
+  /* AI Insights */
+  .insight {
+    background: rgba(99,102,241,0.06);
+    border-left: 3px solid #6366f1;
+    border-radius: 0 10px 10px 0;
+    padding: 14px 18px;
+    margin-bottom: 12px;
+    font-size: 13px;
+    line-height: 1.7;
+    color: #cbd5e1;
+  }
+  .insight .insight-type {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: #818cf8;
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+  .insight.risk {
+    border-left-color: #f87171;
+  }
+  .insight.risk .insight-type { color: #f87171; }
+  .insight.success {
+    border-left-color: #22c55e;
+  }
+  .insight.success .insight-type { color: #22c55e; }
+
+  /* Issues Table */
+  .issues-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  .issues-table thead {
+    background: rgba(99,102,241,0.06);
+  }
+  .issues-table th {
+    text-align: left;
+    padding: 10px 12px;
+    font-weight: 600;
+    color: #64748b;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    border-bottom: 1px solid rgba(99,102,241,0.1);
+  }
+  .issues-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid rgba(99,102,241,0.06);
+    color: #cbd5e1;
+  }
+  .issues-table tr:hover {
+    background: rgba(99,102,241,0.04);
+  }
+  .badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .badge.high { background: rgba(248,113,113,0.15); color: #f87171; }
+  .badge.medium { background: rgba(251,191,36,0.15); color: #fbbf24; }
+  .badge.low { background: rgba(52,211,153,0.15); color: #34d399; }
+  .badge.math { background: rgba(139,92,246,0.15); color: #a78bfa; }
+  .badge.internal { background: rgba(96,165,250,0.15); color: #60a5fa; }
+  .badge.prior { background: rgba(244,114,182,0.15); color: #f472b6; }
+  .badge.disclosure { background: rgba(52,211,153,0.15); color: #34d399; }
+  .badge.auto-fixed {
+    background: rgba(34,197,94,0.12);
+    color: #22c55e;
+    border: 1px solid rgba(34,197,94,0.2);
+  }
+  .badge.ai-suggested {
+    background: rgba(99,102,241,0.12);
+    color: #818cf8;
+    border: 1px solid rgba(99,102,241,0.2);
+  }
+
+  /* AI Chat */
+  .chat-box {
+    background: rgba(99,102,241,0.04);
+    border: 1px solid rgba(99,102,241,0.15);
+    border-radius: 14px;
+    padding: 20px;
+  }
+  .chat-messages {
+    max-height: 220px;
+    overflow-y: auto;
+    margin-bottom: 12px;
+  }
+  .chat-msg {
+    margin-bottom: 14px;
+    display: flex;
+    gap: 10px;
+  }
+  .chat-msg .avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+  .chat-msg.user .avatar { background: rgba(99,102,241,0.2); }
+  .chat-msg.ai .avatar { background: linear-gradient(135deg, #6366f1, #8b5cf6); }
+  .chat-msg .text {
+    font-size: 13px;
+    line-height: 1.6;
+    color: #cbd5e1;
+  }
+  .chat-msg.ai .text {
+    color: #e2e8f0;
+  }
+  .chat-input {
+    display: flex;
+    gap: 8px;
+  }
+  .chat-input input {
+    flex: 1;
+    background: rgba(15,20,40,0.6);
+    border: 1px solid rgba(99,102,241,0.2);
+    border-radius: 10px;
+    padding: 10px 14px;
+    color: #e2e8f0;
+    font-size: 13px;
+    outline: none;
+  }
+  .chat-input input::placeholder { color: #475569; }
+  .chat-input input:focus { border-color: #6366f1; }
+  .chat-input button {
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    border: none;
+    border-radius: 10px;
+    padding: 10px 16px;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  /* Predicted Timeline */
+  .timeline {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin: 16px 0;
+  }
+  .timeline-step {
+    flex: 1;
+    text-align: center;
+    position: relative;
+  }
+  .timeline-step::after {
+    content: '';
+    position: absolute;
+    top: 14px;
+    left: 50%;
+    width: 100%;
+    height: 2px;
+    background: rgba(99,102,241,0.2);
+  }
+  .timeline-step:last-child::after { display: none; }
+  .timeline-dot {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    margin: 0 auto 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    position: relative;
+    z-index: 1;
+  }
+  .timeline-dot.done { background: #22c55e; color: #fff; }
+  .timeline-dot.current { background: #6366f1; color: #fff; box-shadow: 0 0 12px rgba(99,102,241,0.5); }
+  .timeline-dot.predicted { background: rgba(99,102,241,0.15); color: #818cf8; border: 1px dashed #6366f1; }
+  .timeline-label {
+    font-size: 10px;
+    color: #64748b;
+  }
+  .timeline-sub {
+    font-size: 10px;
+    color: #475569;
+  }
+
+  /* Footer */
+  .footer {
+    text-align: center;
+    padding: 24px;
+    font-size: 11px;
+    color: #334155;
+  }
+</style>
+</head>
+<body>
+
+<!-- Top Nav -->
+<div class="top-bar">
+  <div class="logo">
+    <div class="logo-dot"></div>
+    FSA PLATFORM
+  </div>
+  <div style="display:flex;align-items:center;gap:16px;">
+    <div class="ai-badge">AI COPILOT ACTIVE</div>
+    <div class="user">Jane Smith, Manager</div>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- AI Summary -->
+  <div class="ai-summary">
+    <div class="ai-icon">✨ AI Executive Summary</div>
+    <div class="summary-text">
+      This is <strong>Iteration 4</strong> of the FY 2028 annual filing for Acme Global Inc. 
+      The document quality has improved significantly — <strong>35 of 47 issues have been resolved</strong> (74.5% resolution rate). 
+      AI auto-resolved <strong>23 issues</strong> without human review. 
+      <strong>3 high-severity items remain</strong> — primarily in mathematical accuracy and internal consistency. 
+      Based on current trajectory, the AI predicts <strong>2 more iterations</strong> to reach sign-off readiness. 
+      Estimated completion: <strong>March 28, 2029</strong>.
+    </div>
+    <div class="confidence">
+      AI Confidence <span class="confidence-bar"><span class="fill" style="width:92%"></span></span> 92%
+    </div>
+  </div>
+
+  <!-- Status Cards -->
+  <div class="status-banner">
+    <div class="status-card total">
+      <div class="number">47</div>
+      <div class="desc">Total Issues</div>
+    </div>
+    <div class="status-card open">
+      <div class="number">12</div>
+      <div class="desc">Open</div>
+    </div>
+    <div class="status-card auto">
+      <div class="number">23</div>
+      <div class="desc">AI Auto-Resolved</div>
+      <div class="sub">49% of all issues</div>
+    </div>
+    <div class="status-card resolved">
+      <div class="number">35</div>
+      <div class="desc">Total Resolved</div>
+    </div>
+    <div class="status-card pred">
+      <div class="number">2</div>
+      <div class="desc">Iterations to Sign-off</div>
+      <div class="sub">AI prediction</div>
+    </div>
+  </div>
+
+  <!-- AI Predicted Timeline -->
+  <div class="section">
+    <h2>📅 AI-Predicted Timeline to Sign-off <span class="tag">PREDICTIVE</span></h2>
+    <div class="timeline">
+      <div class="timeline-step">
+        <div class="timeline-dot done">1</div>
+        <div class="timeline-label">Iter 1</div>
+        <div class="timeline-sub">Mar 3</div>
+      </div>
+      <div class="timeline-step">
+        <div class="timeline-dot done">2</div>
+        <div class="timeline-label">Iter 2</div>
+        <div class="timeline-sub">Mar 10</div>
+      </div>
+      <div class="timeline-step">
+        <div class="timeline-dot done">3</div>
+        <div class="timeline-label">Iter 3</div>
+        <div class="timeline-sub">Mar 14</div>
+      </div>
+      <div class="timeline-step">
+        <div class="timeline-dot current">4</div>
+        <div class="timeline-label">Current</div>
+        <div class="timeline-sub">Mar 17</div>
+      </div>
+      <div class="timeline-step">
+        <div class="timeline-dot predicted">5</div>
+        <div class="timeline-label">Predicted</div>
+        <div class="timeline-sub">~Mar 22</div>
+      </div>
+      <div class="timeline-step">
+        <div class="timeline-dot predicted">✓</div>
+        <div class="timeline-label">Sign-off</div>
+        <div class="timeline-sub">~Mar 28</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Two Column: Chart + AI Insights -->
+  <div class="two-col">
+    <div class="section">
+      <h2>📊 Issues by Iteration</h2>
+      <div class="chart-container" style="height:300px;">
+        <canvas id="issuesChart"></canvas>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>🧠 AI Insights <span class="tag">LIVE</span></h2>
+      
+      <div class="insight risk">
+        <div class="insight-type">⚠️ Risk Alert</div>
+        Total assets on the Balance Sheet do not sum correctly (Line 42). This issue has persisted across 2 iterations. <strong>Recommend escalation to the client's controller.</strong>
+      </div>
+      
+      <div class="insight">
+        <div class="insight-type">🔍 Pattern Detected</div>
+        Internal consistency issues are concentrated in Notes 3, 5, and 9 — all relating to revenue and tax. This suggests the client may be using <strong>different source data</strong> for notes vs. primary statements.
+      </div>
+      
+      <div class="insight success">
+        <div class="insight-type">✅ Auto-Resolution</div>
+        AI automatically corrected 8 rounding differences, 6 disclosure formatting issues, and 9 prior-year reference mismatches. <strong>All changes logged for audit trail.</strong>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sentiment + Chat -->
+  <div class="two-col">
+    <div class="section">
+      <h2>💬 Sentiment Analysis <span class="tag">NLP</span></h2>
+      <div class="sentiment-row">
+        <div class="sent-card pos">
+          <div class="s-val">62%</div>
+          <div class="s-label">Positive</div>
+        </div>
+        <div class="sent-card neu">
+          <div class="s-val">28%</div>
+          <div class="s-label">Neutral</div>
+        </div>
+        <div class="sent-card neg">
+          <div class="s-val">10%</div>
+          <div class="s-label">Risk Language</div>
+        </div>
+      </div>
+      <div class="chart-container" style="height:180px;">
+        <canvas id="sentimentChart"></canvas>
+      </div>
+      <div class="insight" style="margin-top:12px;">
+        <div class="insight-type">📝 NLP Finding</div>
+        Note 12 (Contingencies) contains hedging language: <em>"may potentially result in"</em> — AI suggests clarifying to meet ASC 450 disclosure requirements.
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>🤖 Ask the Document <span class="tag">AI COPILOT</span></h2>
+      <div class="chat-box">
+        <div class="chat-messages">
+          <div class="chat-msg user">
+            <div class="avatar">👤</div>
+            <div class="text">What are the remaining high-severity issues?</div>
+          </div>
+          <div class="chat-msg ai">
+            <div class="avatar">✨</div>
+            <div class="text">There are <strong>3 high-severity issues</strong> remaining:<br><br>
+              1. <strong>#047</strong> — Total assets don't sum on Balance Sheet (Math Accuracy)<br>
+              2. <strong>#044</strong> — Revenue mismatch between Income Statement and Note 3 (Internal Consistency)<br>
+              3. <strong>#041</strong> — Prior year retained earnings restated without explanation<br><br>
+              Issues #047 and #044 are likely connected — both involve revenue-related line items. I recommend requesting a revised trial balance from the client.
+            </div>
+          </div>
+          <div class="chat-msg user">
+            <div class="avatar">👤</div>
+            <div class="text">Can you draft the client email for the trial balance request?</div>
+          </div>
+          <div class="chat-msg ai">
+            <div class="avatar">✨</div>
+            <div class="text">Draft ready. I've prepared an email requesting the updated trial balance with specific references to the discrepancies in Lines 42 and Note 3. Shall I send it to your review queue?</div>
+          </div>
+        </div>
+        <div class="chat-input">
+          <input type="text" placeholder="Ask anything about this filing...">
+          <button>Send</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Open Issues Table -->
+  <div class="section">
+    <h2>⚠️ Open Issues (12) <span class="tag">3 HIGH</span></h2>
+    <table class="issues-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Category</th>
+          <th>Severity</th>
+          <th>Description</th>
+          <th>AI Action</th>
+          <th>Location</th>
+          <th>Found</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>#047</td>
+          <td><span class="badge math">Math Accuracy</span></td>
+          <td><span class="badge high">High</span></td>
+          <td>Total assets do not sum correctly on Balance Sheet</td>
+          <td><span class="badge ai-suggested">🤖 Fix Suggested</span></td>
+          <td>BS, Line 42</td>
+          <td>Iter 4</td>
+        </tr>
+        <tr>
+          <td>#044</td>
+          <td><span class="badge internal">Internal</span></td>
+          <td><span class="badge high">High</span></td>
+          <td>Revenue on Income Statement ≠ Revenue in Note 3</td>
+          <td><span class="badge ai-suggested">🤖 Fix Suggested</span></td>
+          <td>IS / Note 3</td>
+          <td>Iter 3</td>
+        </tr>
+        <tr>
+          <td>#041</td>
+          <td><span class="badge prior">Prior Year</span></td>
+          <td><span class="badge high">High</span></td>
+          <td>Prior year retained earnings restated without explanation</td>
+          <td><span class="badge ai-suggested">🤖 Draft Note Ready</span></td>
+          <td>BS, Line 58</td>
+          <td>Iter 3</td>
+        </tr>
+        <tr>
+          <td>#039</td>
+          <td><span class="badge disclosure">Disclosure</span></td>
+          <td><span class="badge medium">Medium</span></td>
+          <td>Missing lease liability disclosure per ASC 842</td>
+          <td><span class="badge auto-fixed">✅ Auto-Draft Ready</span></td>
+          <td>Note 8</td>
+          <td>Iter 2</td>
+        </tr>
+        <tr>
+          <td>#038</td>
+          <td><span class="badge math">Math Accuracy</span></td>
+          <td><span class="badge medium">Medium</span></td>
+          <td>Cash flow from operations subtotal off by $2.3M</td>
+          <td><span class="badge auto-fixed">✅ Auto-Fixed</span></td>
+          <td>CF, Line 18</td>
+          <td>Iter 2</td>
+        </tr>
+        <tr>
+          <td>#036</td>
+          <td><span class="badge disclosure">Disclosure</span></td>
+          <td><span class="badge medium">Medium</span></td>
+          <td>Related party transactions not fully disclosed</td>
+          <td><span class="badge ai-suggested">🤖 Template Ready</span></td>
+          <td>Note 14</td>
+          <td>Iter 2</td>
+        </tr>
+        <tr>
+          <td>#035</td>
+          <td><span class="badge internal">Internal</span></td>
+          <td><span class="badge low">Low</span></td>
+          <td>Depreciation in notes vs. income statement gap</td>
+          <td><span class="badge auto-fixed">✅ Auto-Fixed</span></td>
+          <td>Note 5 / IS</td>
+          <td>Iter 3</td>
+        </tr>
+        <tr>
+          <td>#033</td>
+          <td><span class="badge prior">Prior Year</span></td>
+          <td><span class="badge low">Low</span></td>
+          <td>Comparative EPS doesn't match prior year filing</td>
+          <td><span class="badge auto-fixed">✅ Auto-Fixed</span></td>
+          <td>IS, Line 64</td>
+          <td>Iter 2</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+</div>
+
+<div class="footer">
+  FSA Platform v4.2 — AI-Powered Financial Statement Analysis &middot; Prototype 2029
+</div>
+
+<script>
+// Issues Chart
+const ctx1 = document.getElementById('issuesChart').getContext('2d');
+new Chart(ctx1, {
+  type: 'bar',
+  data: {
+    labels: ['Iter 1', 'Iter 2', 'Iter 3', 'Iter 4', 'Iter 5*', 'Sign-off*'],
+    datasets: [
+      { label: 'Math Accuracy', data: [8, 5, 3, 1, 0, 0], backgroundColor: '#a78bfa', borderRadius: 3 },
+      { label: 'Internal Consistency', data: [6, 4, 3, 2, 1, 0], backgroundColor: '#60a5fa', borderRadius: 3 },
+      { label: 'Prior Year', data: [5, 4, 2, 1, 0, 0], backgroundColor: '#f472b6', borderRadius: 3 },
+      { label: 'Disclosure', data: [9, 6, 4, 3, 1, 0], backgroundColor: '#34d399', borderRadius: 3 }
+    ]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { position: 'bottom', labels: { usePointStyle: true, pointStyle: 'rectRounded', padding: 14, font: { size: 11 }, color: '#94a3b8' }},
+      annotation: {}
+    },
+    scales: {
+      x: { stacked: true, grid: { display: false }, ticks: { color: '#64748b', font: { size: 11 } }},
+      y: { stacked: true, beginAtZero: true, title: { display: true, text: 'Open Issues', color: '#64748b', font: { size: 12 } }, grid: { color: 'rgba(99,102,241,0.06)' }, ticks: { color: '#64748b', stepSize: 5 }}
+    }
+  }
+});
+
+// Sentiment Chart
+const ctx2 = document.getElementById('sentimentChart').getContext('2d');
+new Chart(ctx2, {
+  type: 'line',
+  data: {
+    labels: ['Iter 1', 'Iter 2', 'Iter 3', 'Iter 4'],
+    datasets: [
+      { label: 'Positive', data: [55, 58, 60, 62], borderColor: '#34d399', backgroundColor: 'rgba(52,211,153,0.08)', fill: true, tension: 0.3, pointRadius: 4, borderWidth: 2 },
+      { label: 'Neutral', data: [30, 29, 28, 28], borderColor: '#fbbf24', backgroundColor: 'rgba(251,191,36,0.08)', fill: true, tension: 0.3, pointRadius: 4, borderWidth: 2 },
+      { label: 'Risk', data: [15, 13, 12, 10], borderColor: '#f87171', backgroundColor: 'rgba(248,113,113,0.08)', fill: true, tension: 0.3, pointRadius: 4, borderWidth: 2 }
+    ]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, padding: 12, font: { size: 11 }, color: '#94a3b8' }}},
+    scales: {
+      x: { grid: { display: false }, ticks: { color: '#64748b', font: { size: 11 } }},
+      y: { beginAtZero: true, max: 100, grid: { color: 'rgba(99,102,241,0.06)' }, ticks: { callback: v => v+'%', color: '#64748b', font: { size: 11 } }}
+    }
+  }
+});
+</script>
+
+</body>
+</html>
