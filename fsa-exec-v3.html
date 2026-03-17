@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>FSA Executive View v3</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #0b1020;
+    color: #e5e7eb;
+  }
+  .topbar {
+    height: 64px;
+    border-bottom: 1px solid rgba(148,163,184,0.12);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 32px;
+    background: rgba(10,15,30,0.96);
+    backdrop-filter: blur(16px);
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    font-size: 15px;
+  }
+  .brand-dot {
+    width: 8px; height: 8px; border-radius: 50%; background: #6366f1;
+    box-shadow: 0 0 12px rgba(99,102,241,0.9);
+  }
+  .topmeta {
+    color: #94a3b8;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .pill {
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .06em;
+    background: linear-gradient(135deg,#6366f1,#8b5cf6);
+    color: white;
+  }
+  .wrap {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 28px;
+  }
+  .meta-strip {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+    margin-bottom: 18px;
+  }
+  .meta-box {
+    background: rgba(30,41,59,0.45);
+    border: 1px solid rgba(148,163,184,0.1);
+    border-radius: 14px;
+    padding: 14px 16px;
+  }
+  .meta-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: #64748b;
+    margin-bottom: 6px;
+  }
+  .meta-value {
+    font-size: 14px;
+    color: #e2e8f0;
+    font-weight: 600;
+  }
+  .hero {
+    background: linear-gradient(135deg, rgba(99,102,241,0.12), rgba(34,197,94,0.05));
+    border: 1px solid rgba(99,102,241,0.18);
+    border-radius: 22px;
+    padding: 28px;
+    margin-bottom: 20px;
+  }
+  .hero-top {
+    display: grid;
+    grid-template-columns: 180px 1fr 220px;
+    gap: 24px;
+    align-items: center;
+    margin-bottom: 22px;
+  }
+  .score {
+    text-align: center;
+    padding-right: 12px;
+    border-right: 1px solid rgba(148,163,184,0.12);
+  }
+  .score .num {
+    font-size: 68px;
+    line-height: 1;
+    font-weight: 800;
+    background: linear-gradient(135deg,#818cf8,#22c55e);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .score .lbl {
+    margin-top: 8px;
+    color: #94a3b8;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+  }
+  .summary h1 {
+    font-size: 28px;
+    line-height: 1.2;
+    margin-bottom: 10px;
+    color: #f8fafc;
+  }
+  .summary p {
+    color: #cbd5e1;
+    font-size: 15px;
+    line-height: 1.7;
+  }
+  .summary strong { color: #fff; }
+  .mini-stats {
+    display: grid;
+    gap: 10px;
+  }
+  .mini-stat {
+    background: rgba(15,23,42,0.42);
+    border: 1px solid rgba(148,163,184,0.08);
+    border-radius: 14px;
+    padding: 12px 14px;
+  }
+  .mini-stat .k {
+    font-size: 11px;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    margin-bottom: 4px;
+  }
+  .mini-stat .v {
+    font-size: 22px;
+    font-weight: 700;
+  }
+  .mini-stat.red .v { color: #f87171; }
+  .mini-stat.green .v { color: #22c55e; }
+  .mini-stat.yellow .v { color: #fbbf24; }
+
+  .progress-labels {
+    display: flex;
+    justify-content: space-between;
+    color: #94a3b8;
+    font-size: 12px;
+    margin-bottom: 8px;
+  }
+  .progress-track {
+    width: 100%;
+    height: 12px;
+    border-radius: 999px;
+    background: rgba(99,102,241,0.10);
+    overflow: hidden;
+    margin-bottom: 16px;
+  }
+  .progress-fill {
+    width: 74%;
+    height: 100%;
+    background: linear-gradient(90deg,#6366f1,#22c55e);
+    border-radius: 999px;
+  }
+  .timeline {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 8px;
+    align-items: start;
+  }
+  .step {
+    text-align: center;
+    position: relative;
+  }
+  .step:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    top: 13px;
+    left: 58%;
+    width: 84%;
+    height: 2px;
+    background: rgba(148,163,184,0.12);
+  }
+  .dot {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    margin: 0 auto 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    position: relative;
+    z-index: 1;
+  }
+  .dot.done { background: #22c55e; color: white; }
+  .dot.now { background: #6366f1; color: white; box-shadow: 0 0 14px rgba(99,102,241,0.5); }
+  .dot.future { background: rgba(99,102,241,0.12); color: #a5b4fc; border: 1px dashed rgba(99,102,241,0.45); }
+  .step .t1 { font-size: 11px; color: #cbd5e1; }
+  .step .t2 { font-size: 10px; color: #64748b; }
+
+  .main {
+    display: grid;
+    grid-template-columns: 1.35fr .65fr;
+    gap: 20px;
+    margin-bottom: 20px;
+  }
+  .card {
+    background: rgba(30,41,59,0.45);
+    border: 1px solid rgba(148,163,184,0.10);
+    border-radius: 18px;
+    padding: 22px 24px;
+  }
+  .card-title {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: .09em;
+    color: #94a3b8;
+    margin-bottom: 16px;
+    font-weight: 700;
+  }
+  .chart-box { height: 330px; }
+
+  .attention-list {
+    display: grid;
+    gap: 12px;
+  }
+  .attention-item {
+    display: grid;
+    grid-template-columns: 34px 1fr;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(148,163,184,0.08);
+  }
+  .attention-item:last-child { border-bottom: none; }
+  .icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+  }
+  .icon.red { background: rgba(248,113,113,0.12); }
+  .icon.amber { background: rgba(251,191,36,0.12); }
+  .icon.green { background: rgba(34,197,94,0.12); }
+  .attention-item h3 {
+    font-size: 14px;
+    margin-bottom: 3px;
+    color: #f8fafc;
+  }
+  .attention-item p {
+    font-size: 12px;
+    color: #94a3b8;
+    line-height: 1.55;
+  }
+
+  .tone-card {
+    background: rgba(30,41,59,0.45);
+    border: 1px solid rgba(148,163,184,0.10);
+    border-radius: 18px;
+    padding: 22px 24px;
+  }
+  .tone-bar {
+    display: flex;
+    height: 40px;
+    border-radius: 12px;
+    overflow: hidden;
+    margin: 14px 0 12px;
+  }
+  .tone-bar div {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    color: white;
+  }
+  .tone-note {
+    font-size: 13px;
+    line-height: 1.65;
+    color: #cbd5e1;
+    background: rgba(99,102,241,0.06);
+    border-left: 3px solid #818cf8;
+    padding: 12px 14px;
+    border-radius: 0 10px 10px 0;
+  }
+  .footer {
+    text-align: center;
+    padding: 20px;
+    color: #334155;
+    font-size: 11px;
+  }
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="brand"><div class="brand-dot"></div> FSA PLATFORM</div>
+    <div class="topmeta"><span class="pill">EXECUTIVE VIEW</span><span>AI-POWERED</span></div>
+  </div>
+
+  <div class="wrap">
+    <div class="meta-strip">
+      <div class="meta-box"><div class="meta-label">Entity</div><div class="meta-value">Acme Global Inc.</div></div>
+      <div class="meta-box"><div class="meta-label">Filing</div><div class="meta-value">FY 2028 Annual Report</div></div>
+      <div class="meta-box"><div class="meta-label">Period</div><div class="meta-value">Jan–Dec 2028</div></div>
+      <div class="meta-box"><div class="meta-label">Iteration</div><div class="meta-value">4 of 6</div></div>
+      <div class="meta-box"><div class="meta-label">Updated</div><div class="meta-value">March 17, 2029</div></div>
+    </div>
+
+    <div class="hero">
+      <div class="hero-top">
+        <div class="score">
+          <div class="num">74%</div>
+          <div class="lbl">Sign-off Ready</div>
+        </div>
+        <div class="summary">
+          <h1>On track, with a small number of blockers remaining.</h1>
+          <p>
+            <strong>35 of 47</strong> issues have been resolved. 
+            AI auto-fixed <strong>23</strong> of them. 
+            <strong>3 items</strong> still require client action before sign-off. 
+            Expected completion: <strong>March 28</strong>.
+          </p>
+        </div>
+        <div class="mini-stats">
+          <div class="mini-stat red"><div class="k">High Severity</div><div class="v">3</div></div>
+          <div class="mini-stat green"><div class="k">Resolved</div><div class="v">35</div></div>
+          <div class="mini-stat yellow"><div class="k">AI Auto-Fixed</div><div class="v">49%</div></div>
+        </div>
+      </div>
+
+      <div class="progress-labels">
+        <span>First draft</span>
+        <span>Current progress</span>
+        <span>Sign-off</span>
+      </div>
+      <div class="progress-track"><div class="progress-fill"></div></div>
+
+      <div class="timeline">
+        <div class="step"><div class="dot done">1</div><div class="t1">Iter 1</div><div class="t2">Mar 3</div></div>
+        <div class="step"><div class="dot done">2</div><div class="t1">Iter 2</div><div class="t2">Mar 10</div></div>
+        <div class="step"><div class="dot done">3</div><div class="t1">Iter 3</div><div class="t2">Mar 14</div></div>
+        <div class="step"><div class="dot now">4</div><div class="t1">Current</div><div class="t2">Now</div></div>
+        <div class="step"><div class="dot future">5</div><div class="t1">Predicted</div><div class="t2">~Mar 22</div></div>
+        <div class="step"><div class="dot future">✓</div><div class="t1">Sign-off</div><div class="t2">~Mar 28</div></div>
+      </div>
+    </div>
+
+    <div class="main">
+      <div class="card">
+        <div class="card-title">Open Issues by Iteration</div>
+        <div class="chart-box"><canvas id="chart"></canvas></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Requires Attention</div>
+        <div class="attention-list">
+          <div class="attention-item">
+            <div class="icon red">🔴</div>
+            <div>
+              <h3>Balance Sheet totals incorrect</h3>
+              <p>Persisted across two iterations. Client needs to submit a corrected trial balance.</p>
+            </div>
+          </div>
+          <div class="attention-item">
+            <div class="icon red">🔴</div>
+            <div>
+              <h3>Revenue mismatch across sections</h3>
+              <p>Income Statement and Note 3 use inconsistent values. Likely same root cause as above.</p>
+            </div>
+          </div>
+          <div class="attention-item">
+            <div class="icon amber">🟡</div>
+            <div>
+              <h3>Prior-year restatement needs explanation</h3>
+              <p>AI has prepared a suggested disclosure note for review.</p>
+            </div>
+          </div>
+          <div class="attention-item">
+            <div class="icon green">✅</div>
+            <div>
+              <h3>AI resolved 12 items this iteration</h3>
+              <p>Formatting, rounding, and reference corrections were completed automatically with audit trail.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tone-card">
+      <div class="card-title">Document Tone</div>
+      <div class="tone-bar">
+        <div style="width:62%;background:#22c55e;">62% Positive</div>
+        <div style="width:28%;background:#eab308;">28% Neutral</div>
+        <div style="width:10%;background:#ef4444;">10%</div>
+      </div>
+      <div class="tone-note">
+        Risk-oriented language has decreased from <strong>15% to 10%</strong> across iterations. Remaining cautionary wording appears concentrated in contingencies and is within a typical range for this filing type.
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">FSA Platform — Executive Dashboard Prototype</div>
+
+<script>
+new Chart(document.getElementById('chart').getContext('2d'), {
+  type: 'bar',
+  data: {
+    labels: ['Iter 1', 'Iter 2', 'Iter 3', 'Iter 4', 'Iter 5*', 'Sign-off*'],
+    datasets: [
+      { label: 'Mathematical Accuracy', data: [8,5,3,1,0,0], backgroundColor: '#a78bfa', borderRadius: 3 },
+      { label: 'Internal Consistency', data: [6,4,3,2,1,0], backgroundColor: '#60a5fa', borderRadius: 3 },
+      { label: 'Prior Year Consistency', data: [5,4,2,1,0,0], backgroundColor: '#f472b6', borderRadius: 3 },
+      { label: 'Disclosure Checklist', data: [9,6,4,3,1,0], backgroundColor: '#34d399', borderRadius: 3 }
+    ]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: 'bottom',
+        labels: {
+          color: '#94a3b8',
+          usePointStyle: true,
+          pointStyle: 'rectRounded',
+          padding: 16,
+          font: { size: 11 }
+        }
+      }
+    },
+    scales: {
+      x: {
+        stacked: true,
+        grid: { display: false },
+        ticks: { color: '#64748b', font: { size: 11 } }
+      },
+      y: {
+        stacked: true,
+        beginAtZero: true,
+        ticks: { color: '#64748b', stepSize: 5, font: { size: 11 } },
+        grid: { color: 'rgba(148,163,184,0.08)' },
+        title: {
+          display: true,
+          text: 'Open Issues',
+          color: '#64748b',
+          font: { size: 11 }
+        }
+      }
+    }
+  }
+});
+</script>
+</body>
+</html>
